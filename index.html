@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pickleball">
+<title>Pickleball Round Robin</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --surface:#ffffff; --surface2:#eef1f4; --line:#d2d9e0;
+    --text:#16202b; --muted:#52606d; --dim:#8a96a3;
+    --accent:#2f8f3e; --accent-dk:#246e30; --win:#1f7a2e; --warn:#9a6b00; --danger:#c0392b;
+    --ball:#e0a800; --chip:#eef1f4; --chipon:#d6efd8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%;}
+  body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);min-height:100vh;}
+  .wrap{max-width:560px;margin:0 auto;padding:0 14px 90px;}
+  header{display:flex;align-items:center;gap:10px;padding:16px 2px 12px;}
+  header .dot{width:26px;height:26px;border-radius:50%;background:var(--ball);
+    background-image:radial-gradient(circle at 30% 30%, transparent 2px, var(--ball) 2px);flex:none;}
+  header h1{font-size:19px;margin:0;font-weight:600;letter-spacing:-.01em;}
+  header .sub{font-size:12px;color:var(--dim);margin:0;}
+  .tabs{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:50;}
+  .tab{flex:1;padding:11px 4px;text-align:center;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;transition:.12s;}
+  .tab.on{background:var(--accent);color:#ffffff;border-color:var(--accent);}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .field{display:flex;align-items:center;gap:10px;margin-bottom:11px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{flex:1;font-size:14px;color:var(--muted);}
+  .lbl{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin:0 0 9px;font-weight:600;}
+  input,button,select{font-family:inherit;font-size:16px;color:var(--text);}
+  input[type=text],input[type=date],input[type=number]{background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:9px 11px;color:var(--text);outline:none;transition:.12s;}
+  input:focus{border-color:var(--accent);}
+  input.num{width:64px;text-align:center;}
+  input.score{width:62px;text-align:center;font-size:20px;font-weight:600;padding:8px;}
+  ::placeholder{color:var(--dim);}
+  .btn{display:block;width:100%;padding:13px;border-radius:11px;border:1px solid var(--line);background:var(--surface2);color:var(--text);font-size:15px;font-weight:600;cursor:pointer;transition:.12s;margin-top:4px;}
+  .btn:active{transform:scale(.985);}
+  .btn.primary{background:var(--accent);color:#ffffff;border-color:var(--accent);}
+  .btn.ghost{background:transparent;border:none;color:var(--danger);font-size:13px;font-weight:500;}
+  .iconbtn{background:var(--surface2);border:1px solid var(--line);border-radius:9px;width:42px;height:42px;font-size:20px;color:var(--text);cursor:pointer;flex:none;}
+  .iconbtn:disabled{opacity:.3;}
+  .row{display:flex;align-items:center;gap:10px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+  .chip{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:7px 13px;font-size:14px;cursor:pointer;transition:.12s;user-select:none;}
+  .chip.on{background:var(--chipon);border-color:var(--accent);color:#16402a;font-weight:600;}
+  .chip .x{color:var(--dim);margin-left:6px;font-size:12px;}
+  .pname-row{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+  .pnum{width:22px;font-size:12px;color:var(--dim);text-align:center;flex:none;}
+  .del{background:none;border:none;color:var(--danger);font-size:20px;padding:4px 8px;cursor:pointer;flex:none;}
+  .edit{background:none;border:none;color:var(--muted);font-size:14px;padding:4px 8px;cursor:pointer;flex:none;text-decoration:underline;}
+  .note{font-size:12px;line-height:1.5;border-radius:10px;padding:10px 12px;margin-bottom:11px;}
+  .note.ok{background:rgba(127,217,87,.12);color:var(--accent);border:1px solid rgba(127,217,87,.25);}
+  .note.warn{background:rgba(240,180,41,.12);color:var(--warn);border:1px solid rgba(240,180,41,.28);}
+  .note.info{background:var(--surface2);color:var(--muted);}
+  .rnav{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .rnav .title{flex:1;text-align:center;font-size:16px;font-weight:600;}
+  .courtcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+  .courttag{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px;font-weight:600;}
+  .teamrow{display:flex;align-items:center;gap:10px;padding:5px 0;}
+  .teamrow .nm{flex:1;font-size:15px;}
+  .teamrow.w .nm{color:var(--win);font-weight:600;}
+  .vs{text-align:center;font-size:11px;color:var(--dim);padding:2px 0;}
+  .sitout{font-size:12px;color:var(--dim);text-align:center;margin:6px 0 0;}
+  .empty{text-align:center;color:var(--dim);font-size:14px;padding:24px 12px;}
+  .foot{font-size:11px;color:var(--dim);text-align:center;line-height:1.6;margin-top:4px;}
+  textarea.exp{width:100%;height:160px;margin-top:10px;background:var(--surface2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12px;font-family:ui-monospace,monospace;}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:#ffffff;padding:11px 20px;border-radius:24px;font-size:14px;font-weight:600;z-index:200;opacity:0;transition:.2s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+  .toast.show{opacity:1;}
+  .seslist{font-size:14px;}
+  .sesitem{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line);}
+  .sesitem .meta{flex:1;}.sesitem .meta .d{font-weight:600;}.sesitem .meta .s{font-size:12px;color:var(--dim);}
+  .pcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:.12s;}
+  .pcard:active{transform:scale(.99);}
+  .pcard.top{border-color:rgba(214,232,74,.4);}
+  .pcard .phead{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .pcard .prk{width:24px;text-align:center;color:var(--dim);font-size:15px;flex:none;}
+  .pcard.top .prk{color:var(--ball);}
+  .pcard .pname{flex:1;font-size:16px;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pcard .ptot{font-size:20px;font-weight:700;color:var(--accent);flex:none;text-align:right;}
+  .pcard .ptot small{font-size:11px;color:var(--dim);font-weight:500;display:block;margin-top:1px;}
+  .statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 6px;}
+  .statgrid .st{background:var(--surface2);border-radius:8px;padding:6px 8px;}
+  .statgrid .st .v{font-size:15px;font-weight:600;}
+  .statgrid .st .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin-top:1px;}
+  .tapnote{font-size:10px;color:var(--dim);text-align:center;margin-top:8px;}
+  .h2hsec .secttl{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;}
+  .h2hrow{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);font-size:14px;}
+  .h2hrow:last-child{border-bottom:none;}
+  .h2hrow .who{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .h2hrow .rec{font-weight:600;flex:none;}
+  .h2hrow .rec.good{color:var(--win);}.h2hrow .rec.bad{color:var(--danger);}
+  .h2hrow .ppct{font-size:12px;color:var(--dim);flex:none;width:52px;text-align:right;}
+  .trackslabel{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 4px;}
+  .trackbar{display:flex;gap:6px;align-items:center;overflow-x:auto;padding:2px 0 10px;-webkit-overflow-scrolling:touch;}
+  .trackbar::-webkit-scrollbar{display:none;}
+  .tchip{white-space:nowrap;padding:7px 13px;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--muted);font-size:13px;cursor:pointer;flex:none;}
+  .tchip.on{background:var(--surface2);border-color:var(--accent);color:var(--text);font-weight:600;}
+  .tchip .ty{font-size:10px;color:var(--dim);margin-left:5px;}
+  .tadd{flex:none;width:34px;height:34px;border-radius:50%;border:1px dashed var(--line);background:transparent;color:var(--muted);font-size:18px;cursor:pointer;}
+  .fpteam{display:flex;flex-direction:column;gap:6px;flex:1;}
+  .fpslot{display:flex;align-items:center;gap:6px;}
+  .fpslot select{flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--text);font-size:14px;}
+  .gtype{display:flex;gap:6px;margin-bottom:10px;}
+  .gtype button{flex:1;font-size:13px;background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px;cursor:pointer;}
+  .gtype button.on{background:var(--accent);color:#ffffff;border-color:var(--accent);font-weight:600;}
+  .glist .gitem{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--line);font-size:14px;}
+  .glist .gitem:last-child{border-bottom:none;}
+  .glist .gitem .gteams{flex:1;min-width:0;}
+  .glist .gitem .gsc{font-weight:600;flex:none;}
+  .glist .gitem .gw{color:var(--win);}
+  .swapbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .swapbar .lbl2{flex:1;font-size:12px;color:var(--muted);}
+  .nm.swap{cursor:pointer;border-radius:8px;padding:2px 6px;margin:-2px -6px;border:1px dashed transparent;}
+  .nm.swap:active{background:var(--surface2);}
+  .nm.swap.sel{background:var(--chipon);border-color:var(--accent);color:#16402a;}
+  .swap-slot{display:inline-block;cursor:pointer;border-radius:6px;padding:1px 5px;border:1px dashed transparent;}
+  .swap-slot.sel{background:var(--chipon);border-color:var(--accent);}
+  .swap-on .courtcard{border-color:rgba(127,217,87,.35);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="dot" aria-hidden="true"></div>
+    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">v1.5</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+  </header>
+  <p class="trackslabel">Tracks</p>
+  <div id="trackbar"></div>
+  <div class="tabs">
+    <div class="tab on" data-v="setup">Setup</div>
+    <div class="tab" data-v="games">Rounds</div>
+    <div class="tab" data-v="rank">Rankings</div>
+    <div class="tab" data-v="hist">History</div>
+  </div>
+  <div id="view"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+  var KEY="pb_app_v4";
+  var V3KEY="pb_app_v3";
+  var OLDKEY="pb_app_v2";
+  var view="setup";
+  var DB=null;
+
+  // ---------- data model ----------
+  // DB = { roster:[{id,name}], current:session, archive:[snapshot] }
+  // session = { date, location, courts, scoreTo, winBonus, nrounds,
+  //             players:[id], rounds:[[ {t1:[id..], t2:[id..], s1,s2}... ]],
+  //             roundIdx, carryFrom:{stats,h2h,names}|null, rotState, lockedIds }
+  // track = { id, name, type:'rr'|'free', current:session, archive:[snapshot] }
+  // DB = { roster:[{id,name}], tracks:[track], activeTrackId }
+  function uid(){return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+  function tid(){return "t"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+  function blankSession(){
+    return {date:new Date().toISOString().slice(0,10),location:"",
+      courts:3,scoreTo:11,winBonus:2,nrounds:0,
+      players:[],rounds:[],roundIdx:0,carryFrom:null,rotState:null,lockedIds:null};
+  }
+  function blankTrack(name,type){return {id:tid(),name:name,type:type||"rr",current:blankSession(),archive:[]};}
+  function blankDB(){
+    var ladder=blankTrack("Ladder","rr");
+    var rec=blankTrack("Rec","free");
+    return {roster:[],tracks:[ladder,rec],activeTrackId:ladder.id};
+  }
+
+  function loadDB(){
+    var raw=null;
+    try{raw=localStorage.getItem(KEY);}catch(e){}
+    if(raw){
+      try{DB=JSON.parse(raw);}catch(e){DB=blankDB();}
+    }else{
+      // try v3 (id-based, single-track) then v2 (name-based)
+      var v3=null,v2=null;
+      try{v3=localStorage.getItem(V3KEY);}catch(e){}
+      try{v2=localStorage.getItem(OLDKEY);}catch(e){}
+      if(v3){try{DB=migrateV3toV4(JSON.parse(v3));}catch(e){DB=blankDB();}}
+      else if(v2){try{DB=migrateV3toV4(migrateV2(JSON.parse(v2)));}catch(e){DB=blankDB();}}
+      else DB=blankDB();
+    }
+    if(!DB||typeof DB!=="object")DB=blankDB();
+    if(!Array.isArray(DB.roster))DB.roster=[];
+    if(!Array.isArray(DB.tracks)||!DB.tracks.length)DB=Object.assign(DB,{tracks:blankDB().tracks});
+    if(!DB.activeTrackId||!DB.tracks.some(function(t){return t.id===DB.activeTrackId;}))DB.activeTrackId=DB.tracks[0].id;
+    // normalize each track's current session
+    DB.tracks.forEach(function(t){
+      if(!t.type)t.type="rr";
+      if(!t.current)t.current=blankSession();
+      if(!Array.isArray(t.archive))t.archive=[];
+      var s=t.current;
+      if(s.winBonus==null)s.winBonus=2;
+      if(!Array.isArray(s.players))s.players=[];
+      if(!Array.isArray(s.rounds))s.rounds=[];
+      if(s.scoreTo==null)s.scoreTo=11;
+      if(s.courts==null)s.courts=3;
+    });
+  }
+  function saveDB(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}}
+  function curTrack(){for(var i=0;i<DB.tracks.length;i++)if(DB.tracks[i].id===DB.activeTrackId)return DB.tracks[i];return DB.tracks[0];}
+  function S(){return curTrack().current;}
+
+  // wrap a v3 single-track DB into a v4 tracks DB
+  function migrateV3toV4(v3){
+    var ladder={id:tid(),name:"Ladder",type:"rr",current:v3.current||blankSession(),archive:v3.archive||[]};
+    var rec=blankTrack("Rec","free");
+    return {roster:v3.roster||[],tracks:[ladder,rec],activeTrackId:ladder.id};
+  }
+
+  // migrate old name-based DB to id-based (v2 -> v3 shape)
+  function migrateV2(old){
+    var db=blankDB();
+    var nameToId={};
+    function idFor(name){
+      name=(name||"").trim();if(!name)return null;
+      var lo=name.toLowerCase();
+      if(nameToId[lo])return nameToId[lo];
+      var id=uid();nameToId[lo]=id;db.roster.push({id:id,name:name});return id;
+    }
+    (old.roster||[]).forEach(idFor);
+    function convSession(os){
+      if(!os)return blankSession();
+      var ns=blankSession();
+      ns.date=os.date||ns.date;ns.location=os.location||"";
+      ns.courts=os.courts||3;ns.scoreTo=os.scoreTo||11;ns.winBonus=(os.winBonus==null?2:os.winBonus);
+      ns.nrounds=os.nrounds||0;ns.roundIdx=os.roundIdx||0;
+      ns.players=(os.players||[]).filter(function(p){return p&&p.trim();}).map(idFor);
+      ns.rounds=(os.rounds||[]).map(function(courts){
+        var arr=courts.map(function(g){return {t1:[idFor(g.t1[0]),idFor(g.t1[1])],t2:[idFor(g.t2[0]),idFor(g.t2[1])],s1:g.s1,s2:g.s2};});
+        if(courts.sitouts)arr.sitouts=courts.sitouts.map(idFor);
+        return arr;
+      });
+      // old carryFrom was {name:{stats}}; convert to new shape
+      if(os.carryFrom){
+        var stats={},names={};
+        Object.keys(os.carryFrom).forEach(function(nm){var id=idFor(nm);stats[id]=os.carryFrom[nm];names[id]=nm;});
+        ns.carryFrom={stats:stats,h2h:{},names:names};
+      }
+      return ns;
+    }
+    db.current=convSession(old.current);
+    db.archive=(old.archive||[]).map(function(a){
+      return {date:a.date,location:a.location,winBonus:a.winBonus,
+        results:(a.results||[]).map(function(p){return {name:p.name,pts:p.pts,scored:p.scored,bonus:p.bonus,w:p.w,gp:p.gp,possible:p.possible,l:p.l};}),
+        h2hText:null,savedAt:a.savedAt||Date.now()};
+    });
+    return db;
+  }
+
+  // ---------- helpers ----------
+  function toast(msg){var t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+    clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove("show");},1800);}
+  function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function rosterFind(id){for(var i=0;i<DB.roster.length;i++)if(DB.roster[i].id===id)return DB.roster[i];return null;}
+  function nameOf(id){
+    var r=rosterFind(id);if(r)return r.name;
+    // fall back to carried names if a player isn't in roster anymore
+    var s=S();if(s.carryFrom&&s.carryFrom.names&&s.carryFrom.names[id])return s.carryFrom.names[id];
+    return "(unknown)";
+  }
+  function addToRoster(name){
+    name=(name||"").trim();if(!name)return null;
+    var existing=DB.roster.filter(function(r){return r.name.toLowerCase()===name.toLowerCase();})[0];
+    if(existing)return existing.id;
+    var id=uid();DB.roster.push({id:id,name:name});
+    DB.roster.sort(function(a,b){return a.name.localeCompare(b.name);});
+    return id;
+  }
+  function roundsToMeet(n){return Math.max(1,Math.ceil((n-1)/3));}
+  function pkey(a,b){return a<b?a+"|"+b:b+"|"+a;}
+
+  // ---------- pairing engine (repeat-avoiding) ----------
+  function formPairs(playing, pc){
+    function attempt(order){
+      var avail=order.slice(),pairs=[],maxRep=0,total=0;
+      while(avail.length>=2){
+        var a=avail[0],best=null,bk=-1;
+        for(var j=1;j<avail.length;j++){var c=pc[pkey(a,avail[j])]||0;if(best===null||c<best){best=c;bk=j;}}
+        pairs.push([a,avail[bk]]);maxRep=Math.max(maxRep,best);total+=best*best;
+        avail.splice(bk,1);avail.splice(0,1);
+      }
+      return {pairs:pairs,maxRep:maxRep,total:total};
+    }
+    var bestRes=null;
+    for(var t=0;t<200;t++){
+      var order=playing.slice();
+      for(var i=order.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=order[i];order[i]=order[j];order[j]=tmp;}
+      var res=attempt(order);
+      if(!bestRes||res.maxRep<bestRes.maxRep||(res.maxRep===bestRes.maxRep&&res.total<bestRes.total)){
+        bestRes=res;if(bestRes.maxRep===0&&bestRes.total===0)break;
+      }
+    }
+    return bestRes.pairs;
+  }
+  // state: {partnerCount:{}, oppCount:{}, sitTally:{}}
+  function buildRound(ids,courts,state){
+    var n=ids.length,seats=courts*4,canSeat=Math.min(n,seats);canSeat-=canSeat%4;
+    var sitCount=n-canSeat;
+    var pc=state.partnerCount||{},oc=state.oppCount||{},tally=state.sitTally||{},spc=state.sitPairCount||{};
+    ids.forEach(function(x){if(tally[x]==null)tally[x]=0;});
+    var sitting=[],playing=ids.slice();
+    if(sitCount>0){
+      sitting=chooseSitters(ids,sitCount,tally,spc);
+      var sset={};sitting.forEach(function(x){sset[x]=1;tally[x]++;});
+      // record who sat together this round
+      for(var si=0;si<sitting.length;si++)for(var sj=si+1;sj<sitting.length;sj++){var sk=pkey(sitting[si],sitting[sj]);spc[sk]=(spc[sk]||0)+1;}
+      playing=ids.filter(function(x){return !sset[x];});
+    }
+    var pairs=formPairs(playing,pc);
+    function oppCost(p1,p2){var c=0;p1.forEach(function(x){p2.forEach(function(y){var v=oc[pkey(x,y)]||0;c+=v*v;});});return c;}
+    var pleft=pairs.slice(),cs=[];
+    while(pleft.length>=2&&cs.length<courts){
+      var best=null,bi=-1,bj=-1;
+      for(var i=0;i<pleft.length;i++)for(var j=i+1;j<pleft.length;j++){var c=oppCost(pleft[i],pleft[j]);if(best===null||c<best){best=c;bi=i;bj=j;}}
+      cs.push({t1:pleft[bi],t2:pleft[bj],s1:null,s2:null});pleft.splice(bj,1);pleft.splice(bi,1);
+    }
+    pleft.forEach(function(p){sitting.push(p[0]);sitting.push(p[1]);tally[p[0]]++;tally[p[1]]++;});
+    cs.forEach(function(ct){
+      pc[pkey(ct.t1[0],ct.t1[1])]=(pc[pkey(ct.t1[0],ct.t1[1])]||0)+1;
+      pc[pkey(ct.t2[0],ct.t2[1])]=(pc[pkey(ct.t2[0],ct.t2[1])]||0)+1;
+      ct.t1.forEach(function(x){ct.t2.forEach(function(y){oc[pkey(x,y)]=(oc[pkey(x,y)]||0)+1;});});
+    });
+    cs.sitouts=sitting;
+    return {courts:cs,nextState:{partnerCount:pc,oppCount:oc,sitTally:tally,sitPairCount:spc}};
+  }
+  // Choose who sits: fairness first (lowest sit tally), then minimize repeat co-sitting.
+  function chooseSitters(ids,sitCount,tally,spc){
+    // Step 1: figure out the fair tally ceiling. We must pick sitCount players, preferring lowest tally.
+    // Determine the set of "eligible" players: those whose tally is low enough to be fair this round.
+    var sorted=ids.slice().sort(function(a,b){return tally[a]-tally[b];});
+    // The fairness rule: after sitting, spread stays <=1. Players with the minimum tally must be exhausted
+    // before anyone one-above them sits. Build eligibility tiers by tally value.
+    // Candidate pool = enough lowest-tally players to choose from, but allow the whole "tied" tier so we can
+    // diversify groupings within a tier.
+    var threshold=tally[sorted[sitCount-1]]; // the tally of the last forced sitter under pure fairness
+    var mustSit=sorted.filter(function(x){return tally[x]<threshold;}); // strictly below threshold: forced in
+    var tier=sorted.filter(function(x){return tally[x]===threshold;});  // tied at threshold: choose among these
+    var needFromTier=sitCount-mustSit.length;
+    if(needFromTier<=0)return mustSit.slice(0,sitCount);
+    if(needFromTier>=tier.length)return mustSit.concat(tier).slice(0,sitCount);
+    // Step 2: among the tier, pick needFromTier players that minimize co-sitting cost
+    // (cost counts repeats among the chosen sitters AND with the already-forced mustSit group).
+    var chosenTier=pickMinCoSit(tier,needFromTier,mustSit,spc);
+    return mustSit.concat(chosenTier);
+  }
+  function pickMinCoSit(tier,k,fixed,spc){
+    function cost(group){
+      var c=0,all=fixed.concat(group);
+      for(var i=0;i<all.length;i++)for(var j=i+1;j<all.length;j++){var v=spc[pkey(all[i],all[j])]||0;c+=v*v;}
+      return c;
+    }
+    // exact search when small enough (C(tier,k)); else randomized greedy
+    var combos=comboCount(tier.length,k);
+    if(combos<=2000){
+      var best=null,bestG=null;
+      var idx=[];for(var i=0;i<k;i++)idx.push(i);
+      while(true){
+        var g=idx.map(function(t){return tier[t];});
+        var c=cost(g);
+        if(best===null||c<best){best=c;bestG=g.slice();}
+        // advance combination indices
+        var p=k-1;while(p>=0&&idx[p]===tier.length-k+p)p--;
+        if(p<0)break;idx[p]++;for(var q=p+1;q<k;q++)idx[q]=idx[q-1]+1;
+      }
+      return bestG;
+    }
+    // randomized greedy for large tiers
+    var bestG2=null,best2=null;
+    for(var attempt=0;attempt<400;attempt++){
+      var shuffled=tier.slice();for(var s=shuffled.length-1;s>0;s--){var r=Math.floor(Math.random()*(s+1));var tmp=shuffled[s];shuffled[s]=shuffled[r];shuffled[r]=tmp;}
+      var g2=shuffled.slice(0,k);var c2=cost(g2);
+      if(best2===null||c2<best2){best2=c2;bestG2=g2;}
+    }
+    return bestG2;
+  }
+  function comboCount(nn,kk){if(kk<0||kk>nn)return 0;kk=Math.min(kk,nn-kk);var r=1;for(var i=0;i<kk;i++){r=r*(nn-i)/(i+1);}return Math.round(r);}
+  function genRounds(ids,numRounds,courts){
+    if(ids.length<4)return{rounds:[],state:null};
+    var state={partnerCount:{},oppCount:{},sitTally:{},sitPairCount:{}};
+    var rounds=[];
+    for(var r=0;r<numRounds;r++){var step=buildRound(ids,courts,state);rounds.push(step.courts);state=step.nextState;}
+    return {rounds:rounds,state:state};
+  }
+  // rebuild partner/opp/sit history by replaying the actual rounds (used after manual swaps)
+  function recomputeRotState(rounds){
+    var pc={},oc={},tally={},spc={};
+    rounds.forEach(function(courts){
+      var played={};
+      courts.forEach(function(ct){
+        if(ct.t1.length>=2&&ct.t1[0]&&ct.t1[1])pc[pkey(ct.t1[0],ct.t1[1])]=(pc[pkey(ct.t1[0],ct.t1[1])]||0)+1;
+        if(ct.t2.length>=2&&ct.t2[0]&&ct.t2[1])pc[pkey(ct.t2[0],ct.t2[1])]=(pc[pkey(ct.t2[0],ct.t2[1])]||0)+1;
+        ct.t1.forEach(function(x){if(x){played[x]=1;tally[x]=tally[x]||0;}});
+        ct.t2.forEach(function(x){if(x){played[x]=1;tally[x]=tally[x]||0;}});
+        ct.t1.forEach(function(x){ct.t2.forEach(function(y){if(x&&y)oc[pkey(x,y)]=(oc[pkey(x,y)]||0)+1;});});
+      });
+      var sit=(courts.sitouts||[]).filter(Boolean);
+      sit.forEach(function(x){tally[x]=(tally[x]||0)+1;});
+      for(var i=0;i<sit.length;i++)for(var j=i+1;j<sit.length;j++){var k=pkey(sit[i],sit[j]);spc[k]=(spc[k]||0)+1;}
+    });
+    return {partnerCount:pc,oppCount:oc,sitTally:tally,sitPairCount:spc};
+  }
+
+  // ---------- stats ----------
+  function standings(sess){
+    sess=sess||S();
+    var carry=(sess.carryFrom&&sess.carryFrom.stats)?sess.carryFrom.stats:{};
+    var m={};
+    function ensure(id){if(!m[id])m[id]={id:id,pts:0,scored:0,against:0,bonus:0,w:0,l:0,gp:0,possible:0};return m[id];}
+    sess.players.forEach(function(id){ensure(id);});
+    Object.keys(carry).forEach(function(id){
+      var e=ensure(id),cy=carry[id];
+      e.pts+=cy.pts||0;e.w+=cy.w||0;e.l+=cy.l||0;e.gp+=cy.gp||0;
+      e.scored+=cy.scored||0;e.against+=cy.against||0;e.bonus+=cy.bonus||0;e.possible+=cy.possible||0;
+    });
+    var target=sess.scoreTo||11;
+    sess.rounds.forEach(function(courts){courts.forEach(function(g){
+      if(g.s1==null||g.s2==null)return;
+      g.t1.concat(g.t2).forEach(function(x){var e=ensure(x);e.gp++;e.possible+=target;});
+      g.t1.forEach(function(x){var e=ensure(x);e.pts+=g.s1;e.scored+=g.s1;e.against+=g.s2;});
+      g.t2.forEach(function(x){var e=ensure(x);e.pts+=g.s2;e.scored+=g.s2;e.against+=g.s1;});
+      if(g.s1>g.s2){g.t1.forEach(function(x){var e=ensure(x);e.w++;e.pts+=sess.winBonus;e.bonus+=sess.winBonus;});g.t2.forEach(function(x){ensure(x).l++;});}
+      else if(g.s2>g.s1){g.t2.forEach(function(x){var e=ensure(x);e.w++;e.pts+=sess.winBonus;e.bonus+=sess.winBonus;});g.t1.forEach(function(x){ensure(x).l++;});}
+    });});
+    var arr=Object.keys(m).map(function(k){return m[k];});
+    arr.forEach(function(p){var contested=p.scored+p.against;p.pct=contested>0?Math.round(100*p.scored/contested):0;p.pctPoss=p.possible>0?Math.round(100*p.scored/p.possible):0;p.ppg=p.gp>0?(p.scored/p.gp):0;});
+    return arr.sort(function(a,b){return b.pts-a.pts||b.w-a.w||b.gp-a.gp;});
+  }
+  function anyScores(sess){sess=sess||S();return sess.rounds.some(function(c){return c.some(function(g){return g.s1!=null&&g.s2!=null;});});}
+
+  // head-to-head; merges carried h2h then adds current rounds
+  function headToHead(sess){
+    sess=sess||S();
+    var H={};
+    function ensure(a){if(!H[a])H[a]={opp:{},par:{}};return H[a];}
+    function bump(slot,b,win,pf,pa){if(!slot[b])slot[b]={w:0,l:0,pf:0,pa:0};slot[b].pf+=pf;slot[b].pa+=pa;if(win)slot[b].w++;else slot[b].l++;}
+    // seed from carried h2h
+    var carried=(sess.carryFrom&&sess.carryFrom.h2h)?sess.carryFrom.h2h:null;
+    if(carried){
+      Object.keys(carried).forEach(function(a){
+        var src=carried[a];ensure(a);
+        ["opp","par"].forEach(function(kind){
+          if(src[kind])Object.keys(src[kind]).forEach(function(b){
+            var d=src[kind][b];H[a][kind][b]={w:d.w||0,l:d.l||0,pf:d.pf||0,pa:d.pa||0};
+          });
+        });
+      });
+    }
+    sess.rounds.forEach(function(courts){courts.forEach(function(g){
+      if(g.s1==null||g.s2==null||g.s1===g.s2)return;
+      var t1win=g.s1>g.s2;
+      // partners only exist in doubles (two-player teams)
+      [[g.t1,g.s1,g.s2,t1win],[g.t2,g.s2,g.s1,!t1win]].forEach(function(d){
+        var team=d[0],pf=d[1],pa=d[2],win=d[3];
+        if(team.length>=2&&team[0]&&team[1]){var a=team[0],b=team[1];ensure(a);ensure(b);
+          bump(H[a].par,b,win,pf,pa);bump(H[b].par,a,win,pf,pa);}
+      });
+      g.t1.forEach(function(a){g.t2.forEach(function(b){if(!a||!b)return;ensure(a);ensure(b);
+        bump(H[a].opp,b,t1win,g.s1,g.s2);bump(H[b].opp,a,!t1win,g.s2,g.s1);});});
+    });});
+    return H;
+  }
+
+  // merge a source H2H matrix INTO a target (accumulate w/l/pf/pa)
+  function mergeH2H(target,src){
+    if(!src)return target;
+    Object.keys(src).forEach(function(a){
+      if(!target[a])target[a]={opp:{},par:{}};
+      ["opp","par"].forEach(function(kind){
+        var sk=src[a][kind];if(!sk)return;
+        Object.keys(sk).forEach(function(b){
+          var d=sk[b];if(!target[a][kind][b])target[a][kind][b]={w:0,l:0,pf:0,pa:0};
+          var t=target[a][kind][b];
+          t.w+=d.w||0;t.l+=d.l||0;t.pf+=d.pf||0;t.pa+=d.pa||0;
+        });
+      });
+    });
+    return target;
+  }
+  // cumulative H2H for a single track: current session (own games, no carry double-count) + all archived h2h
+  function cumulativeH2HForTrack(tr){
+    var acc={};
+    // current session's own games (exclude carryFrom so we don't double-count carried matrices)
+    var bare={date:tr.current.date,winBonus:tr.current.winBonus,scoreTo:tr.current.scoreTo,players:tr.current.players,rounds:tr.current.rounds,carryFrom:null};
+    mergeH2H(acc,headToHead(bare));
+    // archived structured h2h (only present for sessions saved in v1.1+)
+    (tr.archive||[]).forEach(function(a){if(a.h2h)mergeH2H(acc,a.h2h);});
+    return acc;
+  }
+  // cumulative across all tracks
+  function cumulativeH2HAllTracks(){
+    var acc={};
+    DB.tracks.forEach(function(tr){mergeH2H(acc,cumulativeH2HForTrack(tr));});
+    return acc;
+  }
+  // how many archived sessions lack structured h2h (pre-v1.1) — for honest UI note
+  function archivedH2HGaps(scopeAll){
+    var tracks=scopeAll?DB.tracks:[curTrack()];
+    var gaps=0;
+    tracks.forEach(function(tr){(tr.archive||[]).forEach(function(a){if(!a.h2h)gaps++;});});
+    return gaps;
+  }
+
+  // ---------- render ----------
+  function render(){
+    try{
+      renderTrackBar();
+      var tr=curTrack();
+      // subtitle + second-tab label by track type
+      var sub=document.getElementById("tracksub");
+      if(sub)sub.textContent=tr.type==="free"?(tr.name+" · free play"):(tr.name+" · partner rotation");
+      var gtab=document.querySelector('.tab[data-v="games"]');
+      if(gtab)gtab.textContent=tr.type==="free"?"Games":"Rounds";
+      var tabFor=(view==="confirm")?"games":((view==="h2h")?"rank":view);
+      document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("on",t.dataset.v===tabFor);});
+      var host=document.getElementById("view");host.innerHTML="";
+      var second=tr.type==="free"?renderFree:renderGames;
+      ({setup:renderSetup,games:second,rank:renderRank,hist:renderHist})[view](host);
+    }catch(e){
+      document.getElementById("view").innerHTML='<div class="card"><p class="empty">Redraw hiccup — tap another tab and back. ('+esc(e.message)+')</p></div>';
+    }
+  }
+  function renderTrackBar(){
+    var bar=document.getElementById("trackbar");if(!bar)return;
+    bar.className="trackbar";bar.innerHTML="";
+    DB.tracks.forEach(function(t){
+      var chip=document.createElement("div");chip.className="tchip"+(t.id===DB.activeTrackId?" on":"");
+      chip.innerHTML=esc(t.name)+'<span class="ty">'+(t.type==="free"?"rec":"RR")+'</span>';
+      chip.onclick=function(){
+        if(t.id===DB.activeTrackId){trackMenu(t);return;}
+        DB.activeTrackId=t.id;view="setup";saveDB();render();
+      };
+      bar.appendChild(chip);
+    });
+    var add=document.createElement("button");add.className="tadd";add.textContent="+";add.title="New track";
+    add.onclick=addTrack;
+    bar.appendChild(add);
+  }
+  function addTrack(){
+    var name=prompt("Name this track (e.g. Tuesday Ladder, Competitive):","");
+    if(!name||!name.trim())return;
+    var type=confirm("Is this a ROUND-ROBIN track?\n\nOK = round robin (auto-rotating partners)\nCancel = free play (one-off rec/competitive games)")?"rr":"free";
+    var t=blankTrack(name.trim(),type);
+    DB.tracks.push(t);DB.activeTrackId=t.id;view="setup";saveDB();render();
+    toast('Track "'+t.name+'" added');
+  }
+  function trackMenu(t){
+    var action=prompt('Track "'+t.name+'".\nType: "rename", "delete", or leave blank to cancel.',"");
+    if(!action)return;
+    action=action.trim().toLowerCase();
+    if(action==="rename"){
+      var nv=prompt("New name:",t.name);if(nv&&nv.trim()){t.name=nv.trim();saveDB();render();}
+    }else if(action==="delete"){
+      if(DB.tracks.length<=1){alert("Can't delete the only track.");return;}
+      if(confirm('Delete track "'+t.name+'" and all its sessions/history? Saved players are kept.')){
+        DB.tracks=DB.tracks.filter(function(x){return x.id!==t.id;});
+        DB.activeTrackId=DB.tracks[0].id;view="setup";saveDB();render();toast("Track deleted");
+      }
+    }
+  }
+  function noteEl(kind,text){var d=document.createElement("div");d.className="note "+kind;d.textContent=text;return d;}
+  function footEl(t){var p=document.createElement("p");p.className="foot";p.textContent=t;return p;}
+
+  function renderSetup(host){
+    var s=S();var tr=curTrack();
+    if(tr.type==="free"){
+      host.appendChild(noteEl("info","This is a free-play track. Add and score one-off games on the Games tab. Players are picked per game."));
+      var rcard=document.createElement("div");rcard.className="card";
+      rcard.innerHTML='<p class="lbl">Saved players ('+DB.roster.length+')</p>';
+      if(!DB.roster.length)rcard.innerHTML+='<p class="empty">No saved players yet — add some below or on the Games tab.</p>';
+      DB.roster.forEach(function(r){
+        var row=document.createElement("div");row.className="pname-row";
+        row.innerHTML='<span style="flex:1;font-size:15px">'+esc(r.name)+'</span><button class="edit">rename</button>';
+        row.querySelector(".edit").onclick=function(){var nv=prompt("Rename player:",r.name);
+          if(nv&&nv.trim()){var dup=DB.roster.filter(function(x){return x.id!==r.id&&x.name.toLowerCase()===nv.trim().toLowerCase();})[0];
+            if(dup){alert("Another player already has that name.");return;}r.name=nv.trim();DB.roster.sort(function(a,b){return a.name.localeCompare(b.name);});saveDB();render();}};
+        rcard.appendChild(row);
+      });
+      var ar=document.createElement("div");ar.className="row";ar.style.marginTop="10px";
+      ar.innerHTML='<input type="text" id="rp" placeholder="Add a player" autocapitalize="words" style="flex:1"><button class="iconbtn" id="rpb">+</button>';
+      rcard.appendChild(ar);host.appendChild(rcard);
+      ar.querySelector("#rpb").onclick=function(){var v=ar.querySelector("#rp").value.trim();if(v){addToRoster(v);saveDB();render();}};
+      ar.querySelector("#rp").onkeydown=function(e){if(e.key==="Enter"){var v=e.target.value.trim();if(v){addToRoster(v);saveDB();render();}}};
+      var ns=document.createElement("button");ns.className="btn";ns.style.marginTop="8px";ns.textContent="Start new session";ns.onclick=startNewSession;host.appendChild(ns);
+      var ca=document.createElement("button");ca.className="btn ghost";ca.style.marginTop="8px";ca.textContent="Clear data";ca.onclick=clearTrackData;host.appendChild(ca);
+      return;
+    }
+    var sess=document.createElement("div");sess.className="card";
+    sess.innerHTML='<div class="field"><label>Date</label><input type="date" id="f_date" value="'+esc(s.date)+'"></div>'+
+      '<div class="field"><label>Location</label><input type="text" id="f_loc" placeholder="e.g. Lake courts" value="'+esc(s.location)+'" style="flex:1;max-width:60%"></div>';
+    host.appendChild(sess);
+    sess.querySelector("#f_date").onchange=function(e){s.date=e.target.value;saveDB();};
+    sess.querySelector("#f_loc").oninput=function(e){s.location=e.target.value;saveDB();};
+
+    var targetLocked=(s.rounds&&s.rounds.length>0);
+    var cfg=document.createElement("div");cfg.className="card";
+    cfg.innerHTML='<div class="field"><label>Courts available</label><input type="number" class="num" id="f_courts" min="1" value="'+s.courts+'"></div>'+
+      '<div class="field"><label>Games to</label><input type="number" class="num" id="f_to" value="'+s.scoreTo+'"'+(targetLocked?' disabled style="opacity:.6"':'')+'></div>'+
+      (targetLocked?'<p class="foot" style="margin:-4px 0 8px;text-align:left">Game target is locked at '+s.scoreTo+' for this ladder. Start a new ladder (the + above) to use a different target.</p>':'')+
+      '<div class="field"><label>Win bonus (pts)</label><input type="number" class="num" id="f_bonus" value="'+s.winBonus+'"></div>';
+    host.appendChild(cfg);
+    cfg.querySelector("#f_courts").onchange=function(e){s.courts=Math.max(1,parseInt(e.target.value)||1);saveDB();render();};
+    if(!targetLocked)cfg.querySelector("#f_to").onchange=function(e){s.scoreTo=parseInt(e.target.value)||11;saveDB();};
+    cfg.querySelector("#f_bonus").onchange=function(e){var v=parseInt(e.target.value);s.winBonus=isNaN(v)?2:v;saveDB();};
+
+    if(DB.roster.length){
+      var rc=document.createElement("div");rc.className="card";
+      rc.innerHTML='<p class="lbl">Saved players — tap to add</p>';
+      var chips=document.createElement("div");chips.className="chips";
+      DB.roster.forEach(function(r){
+        var inS=s.players.indexOf(r.id)>=0;
+        var chip=document.createElement("div");chip.className="chip"+(inS?" on":"");
+        chip.innerHTML=esc(r.name)+(inS?' <span class="x">✓</span>':'');
+        chip.onclick=function(){
+          if(inS)s.players=s.players.filter(function(id){return id!==r.id;});
+          else s.players.push(r.id);
+          saveDB();render();
+        };
+        chips.appendChild(chip);
+      });
+      rc.appendChild(chips);
+      var mgr=document.createElement("p");mgr.className="foot";mgr.style.textAlign="left";mgr.style.marginTop="10px";
+      mgr.innerHTML='<span style="cursor:pointer;text-decoration:underline" id="mgr">Edit saved players (rename / remove)</span>';
+      rc.appendChild(mgr);mgr.querySelector("#mgr").onclick=editRoster;
+      host.appendChild(rc);
+    }
+
+    var nm=document.createElement("div");nm.className="card";
+    nm.innerHTML='<p class="lbl">Players this session ('+s.players.length+')</p>';
+    s.players.forEach(function(id,i){
+      var row=document.createElement("div");row.className="pname-row";
+      row.innerHTML='<span class="pnum">'+(i+1)+'</span><span style="flex:1;font-size:15px">'+esc(nameOf(id))+'</span><button class="del">✕</button>';
+      nm.appendChild(row);
+      row.querySelector(".del").onclick=function(){s.players.splice(i,1);saveDB();render();};
+    });
+    var addrow=document.createElement("div");addrow.className="row";addrow.style.marginTop=s.players.length?"10px":"0";
+    addrow.innerHTML='<input type="text" id="newp" placeholder="Add a player" autocapitalize="words" autocomplete="off" style="flex:1"><button class="iconbtn" id="addp">+</button>';
+    nm.appendChild(addrow);host.appendChild(nm);
+    var inp=addrow.querySelector("#newp");
+    function addP(){var v=inp.value.trim();if(!v){inp.focus();return;}
+      var existing=DB.roster.filter(function(r){return r.name.toLowerCase()===v.toLowerCase();})[0];
+      var id=existing?existing.id:addToRoster(v);
+      if(s.players.indexOf(id)<0)s.players.push(id);
+      saveDB();render();setTimeout(function(){var f=document.getElementById("newp");if(f)f.focus();},30);}
+    addrow.querySelector("#addp").onclick=addP;
+    inp.onkeydown=function(e){if(e.key==="Enter")addP();};
+
+    host.appendChild(footEl(s.players.length>=4?"Ready — generate rounds on the Rounds tab.":"Add at least 4 players to begin."));
+    var ns=document.createElement("button");ns.className="btn";ns.style.marginTop="8px";ns.textContent="Start new session";ns.onclick=startNewSession;host.appendChild(ns);
+    var ca=document.createElement("button");ca.className="btn ghost";ca.style.marginTop="8px";ca.textContent="Clear data";
+    ca.onclick=clearTrackData;host.appendChild(ca);
+  }
+
+  function editRoster(){
+    var host=document.getElementById("view");host.innerHTML="";
+    var back=document.createElement("button");back.className="btn";back.style.marginBottom="10px";back.textContent="‹ Back";back.onclick=render;host.appendChild(back);
+    var c=document.createElement("div");c.className="card";c.innerHTML='<p class="lbl">Saved players</p>';
+    if(!DB.roster.length)c.innerHTML+='<p class="empty">No saved players yet.</p>';
+    DB.roster.forEach(function(r,i){
+      var row=document.createElement("div");row.className="pname-row";
+      row.innerHTML='<span style="flex:1;font-size:15px">'+esc(r.name)+'</span><button class="edit">rename</button><button class="del" style="font-size:13px">remove</button>';
+      row.querySelector(".edit").onclick=function(){
+        var nv=prompt("Rename player:",r.name);
+        if(nv&&nv.trim()){var dup=DB.roster.filter(function(x){return x.id!==r.id&&x.name.toLowerCase()===nv.trim().toLowerCase();})[0];
+          if(dup){alert("Another player already has that name.");return;}
+          r.name=nv.trim();DB.roster.sort(function(a,b){return a.name.localeCompare(b.name);});saveDB();editRoster();}
+      };
+      row.querySelector(".del").onclick=function(){
+        if(confirm('Remove "'+r.name+'" from saved players? Their past results stay in standings.')){DB.roster.splice(i,1);saveDB();editRoster();}
+      };
+      c.appendChild(row);
+    });
+    host.appendChild(c);
+    var done=document.createElement("button");done.className="btn primary";done.textContent="Done";done.onclick=render;host.appendChild(done);
+  }
+
+  // snapshot a finished session for History (store names + h2h text + structured h2h)
+  function snapshot(s){
+    var st=standings(s);
+    return {date:s.date,location:s.location,winBonus:s.winBonus,
+      results:st.map(function(p){return {id:p.id,name:nameOf(p.id),pts:p.pts,scored:p.scored,against:p.against,bonus:p.bonus,w:p.w,l:p.l,gp:p.gp,possible:p.possible,pct:p.pct,ppg:Math.round(p.ppg*10)/10};}),
+      h2hText:h2hExportText(s),h2h:headToHead(s),savedAt:Date.now()};
+  }
+  // Clear the CURRENT session of the active track: archive it first (if it has scores),
+  // then wipe current scores/rounds so a fresh session can start. History + roster + locked target kept.
+  function clearTrackData(){
+    var tr=curTrack();var s=tr.current;
+    if(!confirm("Are you sure you want to clear data?"))return;
+    if(anyScores())tr.archive.unshift(snapshot(s));
+    var keep=s.players.slice(),c=s.courts,to=s.scoreTo,wb=s.winBonus;
+    tr.current=blankSession();
+    tr.current.players=keep;tr.current.courts=c;tr.current.scoreTo=to;tr.current.winBonus=wb;
+    saveDB();view="setup";render();
+    toast("Data cleared — previous session saved to History");
+  }
+
+  function startNewSession(){
+    var tr=curTrack();var s=tr.current;
+    if(!anyScores()){
+      toast("No scores yet — this session is already empty");
+      return;
+    }
+    if(!confirm("Start a new session? The current session will be saved to History, and a fresh one will begin for this track."))return;
+    tr.archive.unshift(snapshot(s));
+    var keep=s.players.slice(),c=s.courts,to=s.scoreTo,wb=s.winBonus;
+    tr.current=blankSession();
+    tr.current.players=keep;tr.current.courts=c;tr.current.scoreTo=to;tr.current.winBonus=wb;
+    saveDB();view="setup";render();
+    toast("New session started — previous one saved to History");
+  }
+
+  function renderGames(host){
+    var s=S();
+    var ids=s.players.slice();
+    if(!s.rounds.length){
+      var need=roundsToMeet(ids.length||4);
+      if(!s.nrounds)s.nrounds=need;
+      var setup=document.createElement("div");setup.className="card";
+      setup.innerHTML='<p class="lbl">Create rounds</p>'+
+        '<div class="field"><label>Players added</label><span style="font-weight:600">'+ids.length+'</span></div>'+
+        '<div class="field"><label>Number of rounds</label><input type="number" class="num" id="f_nr" min="1" value="'+s.nrounds+'"></div>';
+      host.appendChild(setup);
+      setup.querySelector("#f_nr").onchange=function(e){s.nrounds=Math.max(1,parseInt(e.target.value)||1);saveDB();render();};
+      if(ids.length>=4){
+        var seats=s.courts*4,playing=Math.min(ids.length,seats);playing-=playing%4;var sit=Math.max(0,ids.length-playing);
+        if(sit>0)host.appendChild(noteEl("info",s.courts+" courts seat "+playing+" per round, so "+sit+" sit out each round (fewest-sat go first)."));
+        if(s.nrounds>=need)host.appendChild(noteEl("ok","✓ "+s.nrounds+" rounds should let everyone face everyone at least once (~"+need+" needed for "+ids.length+" players)."));
+        else host.appendChild(noteEl("warn","⚠ "+ids.length+" players need about "+need+" rounds for everyone to meet. At "+s.nrounds+", some pairings won't happen — fine for casual play."));
+        var gen=document.createElement("button");gen.className="btn primary";gen.textContent="Generate "+s.nrounds+" rounds";
+        gen.onclick=function(){var res=genRounds(ids,s.nrounds,s.courts);s.rounds=res.rounds;s.rotState=res.state;s.lockedIds=ids.slice();s.roundIdx=0;saveDB();render();toast("Schedule ready");};
+        host.appendChild(gen);
+      }else host.appendChild(noteEl("info","Add at least 4 players on the Setup tab, then generate here."));
+      return;
+    }
+
+    var head=document.createElement("p");head.className="foot";head.style.textAlign="left";head.style.marginBottom="8px";
+    head.textContent=(s.date||"")+(s.location?"  ·  "+s.location:"");host.appendChild(head);
+    var ri=s.roundIdx;
+    var nav=document.createElement("div");nav.className="rnav";
+    nav.innerHTML='<button class="iconbtn" id="prev" '+(ri===0?"disabled":"")+'>‹</button><div class="title">Round '+(ri+1)+' of '+s.rounds.length+'</div><button class="iconbtn" id="next" '+(ri===s.rounds.length-1?"disabled":"")+'>›</button>';
+    host.appendChild(nav);
+    nav.querySelector("#prev").onclick=function(){if(s.roundIdx>0){s.roundIdx--;saveDB();render();}};
+    nav.querySelector("#next").onclick=function(){if(s.roundIdx<s.rounds.length-1){s.roundIdx++;saveDB();render();}};
+
+    var swapOn=!!s._swap;
+    // swap bar
+    var sb=document.createElement("div");sb.className="swapbar";
+    sb.innerHTML='<span class="lbl2">'+(swapOn?(s._swapSel?"Tap another player to trade, or bring someone in →":"Tap any two players to trade their spots"):"")+'</span>';
+    var swBtn=document.createElement("button");swBtn.className="iconbtn";swBtn.style.width="auto";swBtn.style.padding="0 14px";swBtn.style.fontSize="13px";
+    swBtn.textContent=swapOn?"Done":"Edit pairings";
+    swBtn.onclick=function(){s._swap=!s._swap;s._swapSel=null;saveDB();render();};
+    sb.appendChild(swBtn);
+    host.appendChild(sb);
+
+    var courts=s.rounds[ri];
+
+    // helpers to read/write a position
+    function getId(p){return p.kind==="sit"?courts.sitouts[p.idx]:courts[p.ci][p.team][p.slot];}
+    function setId(p,val){if(p.kind==="sit")courts.sitouts[p.idx]=val;else courts[p.ci][p.team][p.slot]=val;}
+
+    // who is currently in this round (playing or sitting)?
+    function idsInRound(){
+      var set={};courts.forEach(function(ct){ct.t1.forEach(function(x){if(x)set[x]=1;});ct.t2.forEach(function(x){if(x)set[x]=1;});});
+      (courts.sitouts||[]).forEach(function(x){if(x)set[x]=1;});
+      return set;
+    }
+
+    // "bring someone in" panel — only when a slot is selected
+    if(swapOn && s._swapSel){
+      var inRound=idsInRound();
+      var avail=DB.roster.filter(function(r){return !inRound[r.id];});
+      var panel=document.createElement("div");panel.className="card";panel.style.padding="10px 12px";
+      panel.innerHTML='<p class="lbl" style="margin-bottom:8px">Bring someone into '+esc(getId(s._swapSel)?nameOf(getId(s._swapSel))+"\u2019s spot":"the selected spot")+'</p>';
+      var selrow=document.createElement("div");selrow.className="row";
+      var sel=document.createElement("select");sel.style.flex="1";sel.style.background="var(--surface2)";sel.style.border="1px solid var(--line)";sel.style.borderRadius="8px";sel.style.padding="8px";sel.style.color="var(--text)";sel.style.fontSize="14px";
+      var none=document.createElement("option");none.value="";none.textContent=avail.length?"— pick a player —":"(everyone is already in this round)";sel.appendChild(none);
+      avail.forEach(function(r){var o=document.createElement("option");o.value=r.id;o.textContent=r.name;sel.appendChild(o);});
+      selrow.appendChild(sel);
+      var bringBtn=document.createElement("button");bringBtn.className="iconbtn";bringBtn.style.width="auto";bringBtn.style.padding="0 14px";bringBtn.style.fontSize="13px";bringBtn.textContent="Bring in";
+      bringBtn.onclick=function(){if(sel.value)bringIn(s._swapSel,sel.value);};
+      selrow.appendChild(bringBtn);
+      panel.appendChild(selrow);
+      var ar=document.createElement("div");ar.className="row";ar.style.marginTop="8px";
+      ar.innerHTML='<input type="text" id="swnew" placeholder="…or add a new person" autocapitalize="words" style="flex:1"><button class="iconbtn" id="swnewb">+</button>';
+      panel.appendChild(ar);host.appendChild(panel);
+      ar.querySelector("#swnewb").onclick=function(){var v=ar.querySelector("#swnew").value.trim();if(!v)return;var id=addToRoster(v);bringIn(s._swapSel,id);};
+      ar.querySelector("#swnew").onkeydown=function(e){if(e.key==="Enter"){var v=e.target.value.trim();if(v){var id=addToRoster(v);bringIn(s._swapSel,id);}}};
+    }
+
+    function bringIn(pos,newId){
+      var displaced=getId(pos);
+      if(displaced===newId){s._swapSel=null;saveDB();render();return;}
+      // if the newcomer is already elsewhere in this round, pull them out of that spot first
+      removeFromRound(newId);
+      setId(pos,newId);
+      if(!courts.sitouts)courts.sitouts=[];
+      if(pos.kind!=="sit" && displaced){
+        // displaced playing person goes to the bench (kept in the round, available to swap back)
+        if(courts.sitouts.indexOf(displaced)<0)courts.sitouts.push(displaced);
+      }
+      // (if pos was a sit slot, the displaced bencher is simply replaced and leaves this round)
+      // ensure newcomer is in the session player list for standings
+      if(s.players.indexOf(newId)<0)s.players.push(newId);
+      cleanRound();
+      s.rotState=recomputeRotState(s.rounds);
+      s._swapSel=null;saveDB();render();
+      toast(nameOf(newId)+" brought in");
+    }
+    function removeFromRound(id){
+      courts.forEach(function(ct){
+        for(var k=0;k<ct.t1.length;k++)if(ct.t1[k]===id)ct.t1[k]=null;
+        for(var k2=0;k2<ct.t2.length;k2++)if(ct.t2[k2]===id)ct.t2[k2]=null;
+      });
+      if(courts.sitouts)courts.sitouts=courts.sitouts.filter(function(x){return x!==id;});
+    }
+    function cleanRound(){
+      // remove null/duplicate benchers and anyone benched who is also playing
+      var seen={},clean=[];
+      (courts.sitouts||[]).forEach(function(x){if(x&&!seen[x]&&!isPlaying(x)){seen[x]=1;clean.push(x);}});
+      courts.sitouts=clean;
+    }
+    function isPlaying(id){var p=false;courts.forEach(function(ct){if(ct.t1.indexOf(id)>=0||ct.t2.indexOf(id)>=0)p=true;});return p;}
+
+    var another=null;
+    function refreshAnother(){if(!another)return;
+      var done=s.rounds[s.rounds.length-1].every(function(g){return g.s1!=null&&g.s2!=null;});
+      if(done){another.disabled=false;another.style.opacity="1";another.textContent="＋ Play another round";}
+      else{another.disabled=true;another.style.opacity=".5";another.textContent="Enter this round's scores to add another";}
+    }
+
+    function doSwap(posA,posB){
+      var a=getId(posA),b=getId(posB);setId(posA,b);setId(posB,a);
+      s.rotState=recomputeRotState(s.rounds);
+      s._swapSel=null;saveDB();render();
+    }
+    function slotSpan(label,pos){
+      var span=document.createElement("span");span.className="swap-slot"+((s._swapSel&&s._swapSel.key===pos.key)?" sel":"");
+      span.textContent=label;
+      span.onclick=function(){
+        if(!s._swapSel){s._swapSel=pos;saveDB();render();return;}
+        if(s._swapSel.key===pos.key){s._swapSel=null;saveDB();render();return;}
+        doSwap(s._swapSel,pos);
+      };
+      return span;
+    }
+
+    courts.forEach(function(g,ci){
+      var card=document.createElement("div");card.className="courtcard";
+      var done=g.s1!=null&&g.s2!=null;
+      if(courts.length>1){var tag=document.createElement("p");tag.className="courttag";tag.textContent="Court "+(ci+1);card.appendChild(tag);}
+      // team rows
+      function teamRow(team,sideClass,winSide){
+        var rowdiv=document.createElement("div");rowdiv.className="teamrow "+sideClass+(done&&winSide?" w":"");
+        var nm=document.createElement("span");nm.className="nm";
+        if(swapOn){
+          team.forEach(function(id,slot){
+            nm.appendChild(slotSpan(nameOf(id),{kind:"team",ci:ci,team:(sideClass==="t1"?"t1":"t2"),slot:slot,key:ci+sideClass+slot}));
+            if(slot<team.length-1)nm.appendChild(document.createTextNode(" & "));
+          });
+        }else{
+          nm.textContent=team.map(nameOf).join(" & ");
+        }
+        rowdiv.appendChild(nm);
+        var inp=document.createElement("input");inp.className="score "+(sideClass==="t1"?"s1":"s2");inp.type="number";inp.setAttribute("inputmode","numeric");inp.setAttribute("pattern","[0-9]*");
+        inp.value=(sideClass==="t1"?(g.s1==null?"":g.s1):(g.s2==null?"":g.s2));inp.placeholder="–";
+        if(swapOn)inp.style.display="none";
+        rowdiv.appendChild(inp);
+        return {rowdiv:rowdiv,inp:inp};
+      }
+      var r1=teamRow(g.t1,"t1",g.s1>g.s2);
+      var vsd=document.createElement("div");vsd.className="vs";vsd.textContent="vs";
+      var r2=teamRow(g.t2,"t2",g.s2>g.s1);
+      card.appendChild(r1.rowdiv);card.appendChild(vsd);card.appendChild(r2.rowdiv);
+      host.appendChild(card);
+      if(!swapOn){
+        var s1=r1.inp,s2=r2.inp;
+        function sync(){var v1=s1.value===""?null:parseInt(s1.value);var v2=s2.value===""?null:parseInt(s2.value);
+          g.s1=isNaN(v1)?null:v1;g.s2=isNaN(v2)?null:v2;saveDB();
+          var d=g.s1!=null&&g.s2!=null;
+          r1.rowdiv.classList.toggle("w",d&&g.s1>g.s2);r2.rowdiv.classList.toggle("w",d&&g.s2>g.s1);refreshAnother();}
+        s1.addEventListener("input",sync);s2.addEventListener("input",sync);
+      }
+    });
+    // sit-outs (tappable in swap mode so you can sub someone in)
+    if(courts.sitouts&&courts.sitouts.length){
+      if(swapOn){
+        var sitWrap=document.createElement("p");sitWrap.className="sitout";sitWrap.appendChild(document.createTextNode("Sitting out: "));
+        courts.sitouts.forEach(function(id,idx){
+          sitWrap.appendChild(slotSpan(nameOf(id),{kind:"sit",idx:idx,key:"sit"+idx}));
+          if(idx<courts.sitouts.length-1)sitWrap.appendChild(document.createTextNode(", "));
+        });
+        host.appendChild(sitWrap);
+      }else host.appendChild(el_sit(courts.sitouts));
+    }
+
+    if(!swapOn && ri===s.rounds.length-1){
+      another=document.createElement("button");another.className="btn primary";another.style.marginTop="6px";
+      another.onclick=function(){view="confirm";renderConfirm(document.getElementById("view"));};
+      host.appendChild(another);refreshAnother();
+    }
+    if(!swapOn){
+      var regen=document.createElement("button");regen.className="btn ghost";regen.style.color="var(--muted)";regen.textContent="Regenerate schedule";
+      regen.onclick=function(){if(anyScores()&&!confirm("Regenerate? Clears entered scores."))return;
+        s._swap=false;s._swapSel=null;
+        var res=genRounds(ids,s.nrounds||roundsToMeet(ids.length),s.courts);s.rounds=res.rounds;s.rotState=res.state;s.lockedIds=ids.slice();s.roundIdx=0;saveDB();render();};
+      host.appendChild(regen);
+    }
+  }
+  function el_sit(ids){var p=document.createElement("p");p.className="sitout";p.textContent="Sitting out: "+ids.map(nameOf).join(", ");return p;}
+
+  // ---- free-play (one-off games) ----
+  function freeGames(s){if(!s.rounds.length)s.rounds.push([]);return s.rounds[0];}
+  function renderFree(host){
+    var s=S();
+    if(!s._fp)s._fp={type:"doubles",t1:[null,null],t2:[null,null],s1:"",s2:""};
+    var fp=s._fp;
+
+    // session header
+    var sess=document.createElement("div");sess.className="card";
+    sess.innerHTML='<div class="field"><label>Date</label><input type="date" id="f_date" value="'+esc(s.date)+'"></div>'+
+      '<div class="field"><label>Location</label><input type="text" id="f_loc" placeholder="optional" value="'+esc(s.location)+'" style="flex:1;max-width:60%"></div>'+
+      '<div class="field"><label>Games to</label><input type="number" class="num" id="f_to" value="'+s.scoreTo+'"></div>'+
+      '<div class="field"><label>Win bonus (pts)</label><input type="number" class="num" id="f_bonus" value="'+s.winBonus+'"></div>';
+    host.appendChild(sess);
+    sess.querySelector("#f_date").onchange=function(e){s.date=e.target.value;saveDB();};
+    sess.querySelector("#f_loc").oninput=function(e){s.location=e.target.value;saveDB();};
+    sess.querySelector("#f_to").onchange=function(e){s.scoreTo=parseInt(e.target.value)||11;saveDB();};
+    sess.querySelector("#f_bonus").onchange=function(e){var v=parseInt(e.target.value);s.winBonus=isNaN(v)?2:v;saveDB();};
+
+    // new game entry
+    var entry=document.createElement("div");entry.className="card";
+    entry.innerHTML='<p class="lbl">Add a game</p>'+
+      '<div class="gtype"><button id="gd" class="'+(fp.type==="doubles"?"on":"")+'">Doubles</button><button id="gs" class="'+(fp.type==="singles"?"on":"")+'">Singles</button></div>';
+    host.appendChild(entry);
+    entry.querySelector("#gd").onclick=function(){fp.type="doubles";fp.t1=[fp.t1[0]||null,null];fp.t2=[fp.t2[0]||null,null];render();};
+    entry.querySelector("#gs").onclick=function(){fp.type="singles";render();};
+
+    var opts=DB.roster.slice();
+    function select(teamArr,slot){
+      var sel=document.createElement("select");
+      var none=document.createElement("option");none.value="";none.textContent="— pick player —";sel.appendChild(none);
+      opts.forEach(function(r){var o=document.createElement("option");o.value=r.id;o.textContent=r.name;if(teamArr[slot]===r.id)o.selected=true;sel.appendChild(o);});
+      sel.onchange=function(){teamArr[slot]=sel.value||null;saveDB();};
+      return sel;
+    }
+    var teams=document.createElement("div");teams.className="row";teams.style.alignItems="flex-start";
+    var team1=document.createElement("div");team1.className="fpteam";
+    var t1s1=document.createElement("div");t1s1.className="fpslot";t1s1.appendChild(select(fp.t1,0));team1.appendChild(t1s1);
+    if(fp.type==="doubles"){var t1s2=document.createElement("div");t1s2.className="fpslot";t1s2.appendChild(select(fp.t1,1));team1.appendChild(t1s2);}
+    var vs=document.createElement("div");vs.className="vs";vs.textContent="vs";vs.style.padding="8px 4px";
+    var team2=document.createElement("div");team2.className="fpteam";
+    var t2s1=document.createElement("div");t2s1.className="fpslot";t2s1.appendChild(select(fp.t2,0));team2.appendChild(t2s1);
+    if(fp.type==="doubles"){var t2s2=document.createElement("div");t2s2.className="fpslot";t2s2.appendChild(select(fp.t2,1));team2.appendChild(t2s2);}
+    teams.appendChild(team1);teams.appendChild(vs);teams.appendChild(team2);
+    entry.appendChild(teams);
+
+    var scores=document.createElement("div");scores.className="row";scores.style.marginTop="10px";scores.style.justifyContent="center";
+    scores.innerHTML='<input class="score" id="fs1" type="number" inputmode="numeric" pattern="[0-9]*" value="'+esc(fp.s1)+'" placeholder="–"><span class="vs">:</span><input class="score" id="fs2" type="number" inputmode="numeric" pattern="[0-9]*" value="'+esc(fp.s2)+'" placeholder="–">';
+    entry.appendChild(scores);
+    scores.querySelector("#fs1").oninput=function(e){fp.s1=e.target.value;};
+    scores.querySelector("#fs2").oninput=function(e){fp.s2=e.target.value;};
+
+    var addnew=document.createElement("div");addnew.className="row";addnew.style.marginTop="10px";
+    addnew.innerHTML='<input type="text" id="fpnew" placeholder="Add a new player to roster" autocapitalize="words" style="flex:1"><button class="iconbtn" id="fpnewb">+</button>';
+    entry.appendChild(addnew);
+    addnew.querySelector("#fpnewb").onclick=function(){var v=addnew.querySelector("#fpnew").value.trim();if(!v)return;addToRoster(v);saveDB();render();};
+    addnew.querySelector("#fpnew").onkeydown=function(e){if(e.key==="Enter"){var v=e.target.value.trim();if(v){addToRoster(v);saveDB();render();}}};
+
+    var save=document.createElement("button");save.className="btn primary";save.textContent="Save game";
+    save.onclick=function(){
+      var n=fp.type==="doubles"?2:1;
+      var t1=fp.t1.slice(0,n).filter(Boolean),t2=fp.t2.slice(0,n).filter(Boolean);
+      if(t1.length<n||t2.length<n){toast("Pick all players");return;}
+      var all=t1.concat(t2);if(new Set(all).size!==all.length){toast("A player is listed twice");return;}
+      var v1=fp.s1===""?null:parseInt(fp.s1),v2=fp.s2===""?null:parseInt(fp.s2);
+      if(isNaN(v1)||isNaN(v2)||v1==null||v2==null){toast("Enter both scores");return;}
+      var g={t1:t1,t2:t2,s1:v1,s2:v2};
+      freeGames(s).push(g);
+      // ensure these players are in session players list (for standings seeding)
+      all.forEach(function(id){if(s.players.indexOf(id)<0)s.players.push(id);});
+      s._fp={type:fp.type,t1:[null,null],t2:[null,null],s1:"",s2:""};
+      saveDB();render();toast("Game saved");
+    };
+    entry.appendChild(save);
+
+    // list of games this session
+    var games=freeGames(s).filter(function(g){return g.s1!=null&&g.s2!=null;});
+    if(games.length){
+      var list=document.createElement("div");list.className="card glist";
+      list.innerHTML='<p class="lbl">Games this session ('+games.length+')</p>';
+      freeGames(s).forEach(function(g,idx){
+        if(g.s1==null||g.s2==null)return;
+        var w1=g.s1>g.s2,w2=g.s2>g.s1;
+        var item=document.createElement("div");item.className="gitem";
+        item.innerHTML='<span class="gteams"><span class="'+(w1?"gw":"")+'">'+esc(g.t1.map(nameOf).join(" & "))+'</span> vs <span class="'+(w2?"gw":"")+'">'+esc(g.t2.map(nameOf).join(" & "))+'</span></span>'+
+          '<span class="gsc">'+g.s1+'–'+g.s2+'</span><button class="del" style="font-size:16px">✕</button>';
+        item.querySelector(".del").onclick=function(){
+          if(confirm("Delete this game?")){freeGames(s).splice(idx,1);saveDB();render();}
+        };
+        list.appendChild(item);
+      });
+      host.appendChild(list);
+    }else{
+      host.appendChild(noteEl("info","No games yet. Pick teams, enter the score, and Save."));
+    }
+
+    var ca=document.createElement("button");ca.className="btn ghost";ca.textContent="Clear data";ca.onclick=clearTrackData;host.appendChild(ca);
+  }
+
+  function renderConfirm(host){
+    var s=S();host.innerHTML="";
+    var active=(s.lockedIds&&s.lockedIds.length)?s.lockedIds.slice():s.players.slice();
+    var pool=[];
+    active.forEach(function(id){if(pool.indexOf(id)<0)pool.push(id);});
+    s.players.forEach(function(id){if(pool.indexOf(id)<0)pool.push(id);});
+    DB.roster.forEach(function(r){if(pool.indexOf(r.id)<0)pool.push(r.id);});
+    if(!s._present){s._present={};active.forEach(function(id){s._present[id]=true;});}
+    pool.forEach(function(id){if(s._present[id]===undefined)s._present[id]=active.indexOf(id)>=0;});
+
+    var c=document.createElement("div");c.className="card";
+    c.innerHTML='<p class="lbl">Who\u2019s playing the next round?</p>';
+    var chips=document.createElement("div");chips.className="chips";
+    pool.forEach(function(id){
+      var on=!!s._present[id];
+      var chip=document.createElement("div");chip.className="chip"+(on?" on":"");
+      chip.innerHTML=esc(nameOf(id))+(on?' <span class="x">✓</span>':'');
+      chip.onclick=function(){s._present[id]=!s._present[id];renderConfirm(host);};
+      chips.appendChild(chip);
+    });
+    c.appendChild(chips);
+    var addrow=document.createElement("div");addrow.className="row";addrow.style.marginTop="12px";
+    addrow.innerHTML='<input type="text" id="addnew" placeholder="Add someone new" autocapitalize="words" autocomplete="off" style="flex:1"><button class="iconbtn" id="addnewb">+</button>';
+    c.appendChild(addrow);host.appendChild(c);
+    var inp=addrow.querySelector("#addnew");
+    function addNew(){var v=inp.value.trim();if(!v){inp.focus();return;}
+      var existing=DB.roster.filter(function(r){return r.name.toLowerCase()===v.toLowerCase();})[0];
+      var id=existing?existing.id:addToRoster(v);
+      s._present[id]=true;if(s.players.indexOf(id)<0)s.players.push(id);
+      saveDB();renderConfirm(host);setTimeout(function(){var f=document.getElementById("addnew");if(f)f.focus();},30);}
+    addrow.querySelector("#addnewb").onclick=addNew;
+    inp.onkeydown=function(e){if(e.key==="Enter")addNew();};
+
+    var present=pool.filter(function(id){return s._present[id];});
+    if(present.length<4)host.appendChild(noteEl("warn","Need at least 4 players for doubles. "+present.length+" selected."));
+    var go=document.createElement("button");go.className="btn primary";go.textContent="Start round with "+present.length+" players";
+    if(present.length<4){go.disabled=true;go.style.opacity=".5";}
+    go.onclick=function(){
+      var pending=inp.value.trim();
+      if(pending){var ex=DB.roster.filter(function(r){return r.name.toLowerCase()===pending.toLowerCase();})[0];
+        var id=ex?ex.id:addToRoster(pending);s._present[id]=true;if(s.players.indexOf(id)<0)s.players.push(id);if(pool.indexOf(id)<0)pool.push(id);inp.value="";}
+      var now=pool.filter(function(id){return s._present[id];});
+      if(now.length<4){saveDB();renderConfirm(host);toast("Need at least 4 players");return;}
+      var ids=now.slice();
+      var prevKey=(s.lockedIds||[]).slice().sort().join("|");
+      var newKey=ids.slice().sort().join("|");
+      var state;
+      if(prevKey===newKey && s.rotState){state=s.rotState;}
+      else{
+        // roster changed: keep partner/opp/sit history for returning players, seed newcomers
+        var prev=s.rotState||{partnerCount:{},oppCount:{},sitTally:{}};
+        var minSit=null;ids.forEach(function(id){var v=prev.sitTally&&prev.sitTally[id]!=null?prev.sitTally[id]:null;if(v!=null)minSit=(minSit==null?v:Math.min(minSit,v));});
+        if(minSit==null)minSit=0;
+        var tally={};ids.forEach(function(id){tally[id]=(prev.sitTally&&prev.sitTally[id]!=null)?prev.sitTally[id]:minSit;});
+        state={partnerCount:prev.partnerCount||{},oppCount:prev.oppCount||{},sitTally:tally};
+      }
+      var step=buildRound(ids,s.courts,state);
+      s.rounds.push(step.courts);s.rotState=step.nextState;s.lockedIds=ids.slice();
+      s.roundIdx=s.rounds.length-1;s._present=null;
+      saveDB();view="games";render();toast("Round "+s.rounds.length+" — new pairings");
+    };
+    host.appendChild(go);
+    var cancel=document.createElement("button");cancel.className="btn ghost";cancel.style.color="var(--muted)";cancel.textContent="Cancel";
+    cancel.onclick=function(){s._present=null;view="games";render();};host.appendChild(cancel);
+  }
+
+  // a session's OWN contribution (its games only, excluding carryFrom seeding)
+  function sessionOwnStats(sess){
+    var bare={date:sess.date,location:sess.location,courts:sess.courts,scoreTo:sess.scoreTo,winBonus:sess.winBonus,players:sess.players,rounds:sess.rounds,carryFrom:null};
+    return standings(bare);
+  }
+  // compute % pts won from accumulated fields, robust to old archives missing 'against'
+  function pctPoints(p){
+    var contested=(p.scored||0)+(p.against||0);
+    if(contested>0)return Math.round(100*p.scored/contested);
+    // fallback for legacy archives that stored 'possible' but not 'against'
+    if(p.possible>0)return Math.round(100*p.scored/p.possible);
+    return 0;
+  }
+  function pctPossible(p){return p.possible>0?Math.round(100*(p.scored||0)/p.possible):0;}
+  function combinedStandings(){
+    // sum EVERY session ever played across ALL tracks: current sessions + archived.
+    // each session counted by its own games (carry-forward seeding excluded to avoid double-count).
+    var agg={};
+    function ensure(id,name){if(!agg[id])agg[id]={id:id,name:name||null,pts:0,scored:0,against:0,bonus:0,w:0,l:0,gp:0,possible:0};return agg[id];}
+    function addStat(id,name,p){var e=ensure(id,name);e.pts+=p.pts||0;e.scored+=p.scored||0;e.against+=p.against||0;e.bonus+=p.bonus||0;e.w+=p.w||0;e.l+=p.l||0;e.gp+=p.gp||0;e.possible+=p.possible||0;if(name&&!e.name)e.name=name;}
+    DB.tracks.forEach(function(t){
+      // current session (own games only)
+      sessionOwnStats(t.current).forEach(function(p){addStat(p.id,nameOf(p.id),p);});
+      // archived sessions
+      (t.archive||[]).forEach(function(a){
+        (a.results||[]).forEach(function(r){
+          // match by id if archive stored it; else match by name to an existing roster id; else keep name-key
+          var id=r.id;
+          if(!id){
+            var hit=DB.roster.filter(function(rr){return rr.name.toLowerCase()===(r.name||"").toLowerCase();})[0];
+            id=hit?hit.id:("name:"+(r.name||"?").toLowerCase());
+          }
+          addStat(id,r.name,{pts:r.pts,scored:r.scored,against:r.against,bonus:r.bonus,w:r.w,l:r.l,gp:r.gp,possible:r.possible});
+        });
+      });
+    });
+    var arr=Object.keys(agg).map(function(k){return agg[k];});
+    arr.forEach(function(p){p.pct=pctPoints(p);p.pctPoss=pctPossible(p);p.ppg=p.gp>0?(p.scored/p.gp):0;});
+    return arr.sort(function(a,b){return b.pts-a.pts||b.w-a.w||b.gp-a.gp;});
+  }
+  // name lookup that also handles combined "name:" pseudo-ids
+  function combinedName(p){if(p.id&&p.id.indexOf("name:")===0)return p.name||"(unknown)";return nameOf(p.id);}
+
+  function renderRank(host){
+    var s=S();var tr=curTrack();
+    if(!window._rankMode)window._rankMode="track";
+    // toggle (only meaningful if more than one track)
+    if(DB.tracks.length>1){
+      var seg=document.createElement("div");seg.className="gtype";seg.style.marginBottom="12px";
+      seg.innerHTML='<button id="rm_t" class="'+(window._rankMode==="track"?"on":"")+'">This track</button><button id="rm_a" class="'+(window._rankMode==="all"?"on":"")+'">All tracks</button>';
+      host.appendChild(seg);
+      seg.querySelector("#rm_t").onclick=function(){window._rankMode="track";render();};
+      seg.querySelector("#rm_a").onclick=function(){window._rankMode="all";render();};
+    }
+    var combined=(window._rankMode==="all"&&DB.tracks.length>1);
+    var r=combined?combinedStandings():standings(s);
+    var hasAny=combined?r.some(function(p){return p.gp>0;}):(anyScores()||s.carryFrom);
+    if(!hasAny){
+      host.appendChild(el_empty(combined?"No games recorded in any track yet.":"No scores entered yet. Enter scores and standings appear here live."));
+    }else{
+      if(combined)host.appendChild(noteEl("info","Combined standings across all tracks. Head-to-head detail is per-track (tap a player shows this track only)."));
+      else if(s.carryFrom)host.appendChild(noteEl("info","Standings include totals and head-to-head carried from the previous session."));
+      r.forEach(function(p,i){
+        var card=document.createElement("div");card.className="pcard"+(i===0?" top":"");
+        card.innerHTML='<div class="phead"><div class="prk">'+(i===0?"🏆":(i+1))+'</div>'+
+          '<div class="pname">'+esc(combined?combinedName(p):nameOf(p.id))+'</div>'+
+          '<div class="ptot">'+p.pts+'<small>total pts</small></div></div>'+
+          '<div class="statgrid">'+
+            '<div class="st"><div class="v">'+p.gp+'</div><div class="k">Games</div></div>'+
+            '<div class="st"><div class="v">'+p.w+'–'+p.l+'</div><div class="k">W–L</div></div>'+
+            '<div class="st"><div class="v">'+(p.possible!=null?p.possible:0)+'</div><div class="k">Pts possible</div></div>'+
+            '<div class="st"><div class="v">'+p.scored+'</div><div class="k">Pts for</div></div>'+
+            '<div class="st"><div class="v">'+(p.against!=null?p.against:0)+'</div><div class="k">Pts against</div></div>'+
+            '<div class="st"><div class="v">'+p.pct+'%</div><div class="k">% of pts</div></div>'+
+            '<div class="st"><div class="v">'+(p.pctPoss!=null?p.pctPoss:0)+'%</div><div class="k">% of possible</div></div>'+
+            '<div class="st"><div class="v">'+(Math.round(p.ppg*10)/10)+'</div><div class="k">Pts/game</div></div>'+
+          '</div>'+(combined?"":'<div class="tapnote">tap for head-to-head ▾</div>');
+        if(!combined)card.onclick=function(){openH2H(p.id);};
+        else card.style.cursor="default";
+        host.appendChild(card);
+      });
+      host.appendChild(footEl("Total pts = points scored + "+(combined?"win bonus":(s.winBonus+"/win"))+". Pts possible = games × game target. % of pts = your points ÷ all points in your games (for + against). % of possible = points for ÷ pts possible (can top 100% on overtime). Pts/game = points for ÷ games."));
+    }
+    // ---- Share / download (CSV file, all-in-one: rankings + head-to-head) ----
+    var shareLbl=document.createElement("p");shareLbl.className="lbl";shareLbl.style.marginTop="14px";shareLbl.textContent="Share / download (opens your phone\u2019s share menu, or saves a file)";
+    host.appendChild(shareLbl);
+    if(combined){
+      var sb1=document.createElement("button");sb1.className="btn primary";sb1.textContent="\u2191 Share ALL stats (all tracks)";
+      sb1.onclick=function(){shareOrDownload(bundleRows("all"),bundleFilename("all"),host);};
+      host.appendChild(sb1);
+    }else{
+      var sbS=document.createElement("button");sbS.className="btn primary";sbS.textContent="\u2191 Share this session";
+      sbS.onclick=function(){shareOrDownload(bundleRows("session"),bundleFilename("session"),host);};
+      host.appendChild(sbS);
+      var sbT=document.createElement("button");sbT.className="btn";sbT.textContent="\u2191 Share all sessions (this track)";
+      sbT.onclick=function(){shareOrDownload(bundleRows("track"),bundleFilename("track"),host);};
+      host.appendChild(sbT);
+    }
+    // ---- Copy to clipboard (for pasting at a computer) ----
+    var copyLbl=document.createElement("p");copyLbl.className="lbl";copyLbl.style.marginTop="14px";copyLbl.textContent="Or copy to clipboard (paste into Sheets)";
+    host.appendChild(copyLbl);
+    var exp=document.createElement("button");exp.className="btn";exp.textContent=combined?"Copy combined rankings":"Copy rankings (this session)";
+    exp.onclick=function(){doCopy(combined?combinedExportText():rankExportText(s),host);};
+    host.appendChild(exp);
+    if(!combined){
+      var exph=document.createElement("button");exph.className="btn";exph.textContent="Copy head-to-head (this session)";
+      exph.onclick=function(){doCopy(h2hExportText(s),host);};
+      host.appendChild(exph);
+    }
+    var exphc=document.createElement("button");exphc.className="btn";exphc.textContent=combined?"Copy head-to-head (all tracks)":"Copy head-to-head (all sessions, this track)";
+    exphc.onclick=function(){doCopy(h2hCumulativeExportText(combined),host);};
+    host.appendChild(exphc);
+    if(!combined){
+      var exprc=document.createElement("button");exprc.className="btn";exprc.textContent="Copy rankings (all sessions, this track)";
+      exprc.onclick=function(){doCopy(tsv([["Cumulative rankings — "+tr.name],[""]].concat(rankRowsFrom(trackCumulativeStandings(tr),combinedName))),host);};
+      host.appendChild(exprc);
+    }
+  }
+  function el_empty(msg){var d=document.createElement("div");d.className="card";var p=document.createElement("p");p.className="empty";p.textContent=msg;d.appendChild(p);return d;}
+  // cumulative standings for ONE track: current session own-games + all archived results
+  function trackCumulativeStandings(tr){
+    var agg={};
+    function ensure(id,name){if(!agg[id])agg[id]={id:id,name:name||null,pts:0,scored:0,against:0,bonus:0,w:0,l:0,gp:0,possible:0};return agg[id];}
+    function addStat(id,name,p){var e=ensure(id,name);e.pts+=p.pts||0;e.scored+=p.scored||0;e.against+=p.against||0;e.bonus+=p.bonus||0;e.w+=p.w||0;e.l+=p.l||0;e.gp+=p.gp||0;e.possible+=p.possible||0;if(name&&!e.name)e.name=name;}
+    sessionOwnStats(tr.current).forEach(function(p){addStat(p.id,nameOf(p.id),p);});
+    (tr.archive||[]).forEach(function(a){(a.results||[]).forEach(function(r){
+      var id=r.id;
+      if(!id){var hit=DB.roster.filter(function(rr){return rr.name.toLowerCase()===(r.name||"").toLowerCase();})[0];id=hit?hit.id:("name:"+(r.name||"?").toLowerCase());}
+      addStat(id,r.name,{pts:r.pts,scored:r.scored,against:r.against,bonus:r.bonus,w:r.w,l:r.l,gp:r.gp,possible:r.possible});
+    });});
+    var arr=Object.keys(agg).map(function(k){return agg[k];});
+    arr.forEach(function(p){p.pct=pctPoints(p);p.pctPoss=pctPossible(p);p.ppg=p.gp>0?(p.scored/p.gp):0;});
+    return arr.sort(function(a,b){return b.pts-a.pts||b.w-a.w||b.gp-a.gp;});
+  }
+  function rankRowsFrom(standArr,nameFn){
+    var rows=[["Rank","Player","Total Points","Games","Wins","Losses","Pts Possible","Pts For","Pts Against","% of Pts","% of Possible","Pts/Game","Bonus Points"]];
+    standArr.forEach(function(p,i){rows.push([i+1,nameFn(p),p.pts,p.gp,p.w,p.l,(p.possible!=null?p.possible:0),p.scored,(p.against!=null?p.against:0),p.pct+"%",(p.pctPoss!=null?p.pctPoss:0)+"%",Math.round(p.ppg*10)/10,p.bonus]);});
+    return rows;
+  }
+  function combinedExportText(){
+    var rows=[["Combined rankings — all sessions, all tracks"],[""]].concat(rankRowsFrom(combinedStandings(),combinedName));
+    return tsv(rows);
+  }
+
+  function openH2H(id){
+    var host=document.getElementById("view");view="h2h";host.innerHTML="";
+    if(!window._h2hMode)window._h2hMode="session";
+    var back=document.createElement("button");back.className="btn";back.style.marginBottom="10px";back.textContent="‹ Back to rankings";
+    back.onclick=function(){view="rank";render();};host.appendChild(back);
+    var c=document.createElement("div");c.className="card";
+    c.innerHTML='<div class="phead" style="margin:0"><div class="pname" style="font-size:18px">'+esc(nameOf(id))+'</div></div>';
+    host.appendChild(c);
+
+    // toggle: this session vs all sessions (matches All-Tracks scope when cumulative)
+    var allTracksScope=(window._rankMode==="all"&&DB.tracks.length>1);
+    var seg=document.createElement("div");seg.className="gtype";seg.style.marginBottom="10px";
+    seg.innerHTML='<button id="h_s" class="'+(window._h2hMode==="session"?"on":"")+'">This session</button><button id="h_a" class="'+(window._h2hMode==="all"?"on":"")+'">All sessions</button>';
+    host.appendChild(seg);
+    seg.querySelector("#h_s").onclick=function(){window._h2hMode="session";openH2H(id);};
+    seg.querySelector("#h_a").onclick=function(){window._h2hMode="all";openH2H(id);};
+
+    var H,scopeLabel;
+    if(window._h2hMode==="all"){
+      H=allTracksScope?cumulativeH2HAllTracks():cumulativeH2HForTrack(curTrack());
+      scopeLabel=allTracksScope?"All sessions, all tracks":"All sessions in "+curTrack().name;
+      var gaps=archivedH2HGaps(allTracksScope);
+      if(gaps>0)host.appendChild(noteEl("info",scopeLabel+". Note: "+gaps+" older session"+(gaps>1?"s":"")+" archived before this feature can\u2019t be included (no detailed data was saved then)."));
+      else host.appendChild(noteEl("info",scopeLabel+"."));
+    }else{
+      H=headToHead(S());scopeLabel="This session";
+    }
+    var rec=H[id]||{opp:{},par:{}};
+
+    function section(title,data,emptyMsg){
+      var wrap=document.createElement("div");wrap.className="h2hsec";
+      var t=document.createElement("div");t.className="secttl";t.textContent=title;wrap.appendChild(t);
+      var keys=Object.keys(data);
+      if(!keys.length){var e=document.createElement("p");e.className="foot";e.style.textAlign="left";e.textContent=emptyMsg;wrap.appendChild(e);host.appendChild(wrap);return;}
+      keys.sort(function(a,b){var ra=data[a],rb=data[b];var ga=ra.w+ra.l,gb=rb.w+rb.l;var pa=ga?ra.w/ga:0,pb=gb?rb.w/gb:0;return pb-pa||gb-ga;});
+      var card=document.createElement("div");card.className="card";card.style.padding="2px 12px";
+      keys.forEach(function(o){var d=data[o];var totPts=d.pf+d.pa;var ptp=totPts?Math.round(100*d.pf/totPts):0;
+        var cls=d.w>d.l?"good":(d.l>d.w?"bad":"");
+        var row=document.createElement("div");row.className="h2hrow";
+        row.innerHTML='<span class="who">'+esc(nameOf(o))+'</span><span class="rec '+cls+'">'+d.w+'–'+d.l+'</span><span class="ppct">'+ptp+'% pts</span>';
+        card.appendChild(row);});
+      wrap.appendChild(card);host.appendChild(wrap);
+    }
+    section("As opponents (record vs each player)",rec.opp,"No opponent games recorded yet.");
+    section("As partners (record paired with each player)",rec.par,"No partner games recorded yet.");
+    host.appendChild(footEl("Wins–losses in doubles games. \u201C% pts\u201D = team share of total points in those games. Opponent records are influenced by who each of you was partnered with."));
+  }
+
+  // ---------- exports ----------
+  function tsv(rows){return rows.map(function(x){return x.join("\t");}).join("\n");}
+  function rankExportText(s){
+    var rows=[["Date",s.date||""],["Location",s.location||""],[""]].concat(rankRowsFrom(standings(s),function(p){return nameOf(p.id);}));
+    return tsv(rows);
+  }
+  function h2hMatrixToText(H,titleLines){
+    var ids=Object.keys(H);
+    ids.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b));});
+    var rows=titleLines.slice();
+    rows.push([""]);
+    if(!ids.length){rows.push(["(no completed games yet)"]);return tsv(rows);}
+    rows.push(["Read each block as one player's record. \u201CRecord\u201D is that player's wins\u2013losses against or alongside the other; \u201C% pts\u201D is their team's share of points in those games."]);
+    rows.push([""]);
+    ids.forEach(function(id){
+      rows.push(["\u25B6 "+nameOf(id)]);
+      var opp=H[id].opp||{};var oppKeys=Object.keys(opp);
+      oppKeys.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b));});
+      rows.push(["","Played AGAINST","Wins","Losses","Pts For","Pts Against","% Pts"]);
+      if(oppKeys.length){oppKeys.forEach(function(o){var d=opp[o];var tot=d.pf+d.pa;var ptp=tot?Math.round(100*d.pf/tot):0;rows.push(["",nameOf(o),d.w,d.l,d.pf,d.pa,ptp+"%"]);});}
+      else rows.push(["","(none)"]);
+      var par=H[id].par||{};var parKeys=Object.keys(par);
+      parKeys.sort(function(a,b){return nameOf(a).localeCompare(nameOf(b));});
+      rows.push(["","Partnered WITH","Wins","Losses","Pts For","Pts Against","% Pts"]);
+      if(parKeys.length){parKeys.forEach(function(o){var d=par[o];var tot=d.pf+d.pa;var ptp=tot?Math.round(100*d.pf/tot):0;rows.push(["",nameOf(o),d.w,d.l,d.pf,d.pa,ptp+"%"]);});}
+      else rows.push(["","(none)"]);
+      rows.push([""]);
+    });
+    return tsv(rows);
+  }
+  function h2hExportText(s){
+    return h2hMatrixToText(headToHead(s),[["Head-to-head — this session"],["Date",s.date||""],["Location",s.location||""]]);
+  }
+  function h2hCumulativeExportText(allScope){
+    var H=allScope?cumulativeH2HAllTracks():cumulativeH2HForTrack(curTrack());
+    var title=allScope?"Head-to-head — all sessions, all tracks":"Head-to-head — all sessions in "+curTrack().name;
+    var lines=[[title]];
+    var gaps=archivedH2HGaps(allScope);
+    if(gaps>0)lines.push(["Note: "+gaps+" older session(s) archived before this feature are not included."]);
+    return h2hMatrixToText(H,lines);
+  }
+
+  // ----- all-in-one bundle (rankings + head-to-head in one file, in sections) -----
+  // scope: "session" | "track" | "all"
+  function bundleRows(scope){
+    var s=S(),tr=curTrack();
+    var rows=[];
+    var when=s.date||new Date().toISOString().slice(0,10);
+    if(scope==="session"){
+      rows.push(["PICKLEBALL RESULTS — THIS SESSION"]);
+      rows.push(["Track",tr.name]);rows.push(["Date",when]);rows.push(["Location",s.location||""]);
+      rows.push([""]);rows.push(["=== RANKINGS ==="]);
+      rankRowsFrom(standings(s),function(p){return nameOf(p.id);}).forEach(function(r){rows.push(r);});
+      rows.push([""]);rows.push(["=== HEAD-TO-HEAD ==="]);
+      h2hMatrixToText(headToHead(s),[["(this session)"]]).split("\n").forEach(function(line){rows.push(line.split("\t"));});
+    }else if(scope==="track"){
+      rows.push(["PICKLEBALL RESULTS — ALL SESSIONS (TRACK: "+tr.name+")"]);
+      rows.push(["Generated",new Date().toISOString().slice(0,10)]);
+      rows.push([""]);rows.push(["=== CUMULATIVE RANKINGS ==="]);
+      rankRowsFrom(trackCumulativeStandings(tr),combinedName).forEach(function(r){rows.push(r);});
+      rows.push([""]);rows.push(["=== CUMULATIVE HEAD-TO-HEAD ==="]);
+      var g=archivedH2HGaps(false);if(g>0)rows.push(["Note: "+g+" older session(s) archived before head-to-head history are not included."]);
+      h2hMatrixToText(cumulativeH2HForTrack(tr),[["(all sessions in this track)"]]).split("\n").forEach(function(line){rows.push(line.split("\t"));});
+    }else{ // all
+      rows.push(["PICKLEBALL RESULTS — ALL SESSIONS, ALL TRACKS"]);
+      rows.push(["Generated",new Date().toISOString().slice(0,10)]);
+      rows.push([""]);rows.push(["=== CUMULATIVE RANKINGS (ALL TRACKS) ==="]);
+      rankRowsFrom(combinedStandings(),combinedName).forEach(function(r){rows.push(r);});
+      rows.push([""]);rows.push(["=== CUMULATIVE HEAD-TO-HEAD (ALL TRACKS) ==="]);
+      var g2=archivedH2HGaps(true);if(g2>0)rows.push(["Note: "+g2+" older session(s) archived before head-to-head history are not included."]);
+      h2hMatrixToText(cumulativeH2HAllTracks(),[["(all sessions, all tracks)"]]).split("\n").forEach(function(line){rows.push(line.split("\t"));});
+    }
+    return rows;
+  }
+  function bundleTSV(scope){return tsv(bundleRows(scope));}
+  function rowsToCSV(rows){
+    return rows.map(function(r){return r.map(function(cell){
+      var v=(cell==null?"":String(cell));
+      if(/[",\n]/.test(v))v='"'+v.replace(/"/g,'""')+'"';
+      return v;
+    }).join(",");}).join("\r\n");
+  }
+  function safeName(str){return String(str||"").replace(/[^a-z0-9]+/gi,"-").replace(/^-+|-+$/g,"").toLowerCase()||"pickleball";}
+  function bundleFilename(scope){
+    var tr=curTrack();var s=S();
+    var date=(scope==="session"?(s.date||new Date().toISOString().slice(0,10)):new Date().toISOString().slice(0,10));
+    var who=scope==="all"?"all-tracks":safeName(tr.name);
+    var tag=scope==="session"?"session":"cumulative";
+    return "pickleball-"+who+"-"+tag+"-"+date+".csv";
+  }
+  // download a CSV file; try native share first, fall back to download
+  function shareOrDownload(rows,filename,host){
+    var csv=rowsToCSV(rows);
+    var blob=new Blob([csv],{type:"text/csv"});
+    // try native file share
+    try{
+      if(navigator.canShare){
+        var file=new File([blob],filename,{type:"text/csv"});
+        if(navigator.canShare({files:[file]})){
+          navigator.share({files:[file],title:"Pickleball results"}).then(function(){toast("Shared");}).catch(function(){downloadBlob(blob,filename,host);});
+          return;
+        }
+      }
+    }catch(e){}
+    downloadBlob(blob,filename,host);
+  }
+  function downloadBlob(blob,filename,host){
+    try{
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a");a.href=url;a.download=filename;
+      document.body.appendChild(a);a.click();
+      setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},500);
+      toast("Saved "+filename);
+    }catch(e){
+      toast("Couldn't save file on this device");
+    }
+  }
+
+  function renderHist(host){
+    var tr=curTrack();
+    if(!tr.archive.length){host.innerHTML='<div class="card"><p class="empty">No past sessions in this track yet.<br>When you clear data on a track, the finished session is saved here.</p></div>';return;}
+    var c=document.createElement("div");c.className="card seslist";c.innerHTML='<p class="lbl">Past sessions — '+esc(tr.name)+'</p>';
+    tr.archive.forEach(function(a,i){
+      var winner=a.results&&a.results.length?a.results[0].name:"—";
+      var row=document.createElement("div");row.className="sesitem";
+      row.innerHTML='<div class="meta"><div class="d">'+esc(a.date||"")+(a.location?" · "+esc(a.location):"")+'</div><div class="s">'+a.results.length+' players · winner: '+esc(winner)+'</div></div>'+
+        '<button class="iconbtn rankbtn" style="width:auto;padding:0 10px;font-size:12px">Rank</button>'+
+        '<button class="iconbtn h2hbtn" style="width:auto;padding:0 10px;font-size:12px">H2H</button>'+
+        '<button class="iconbtn delbtn" style="width:auto;padding:0 10px;font-size:14px;color:var(--danger)" title="Delete this session">✕</button>';
+      row.querySelector(".delbtn").onclick=function(){
+        if(confirm("Delete this saved session? This can't be undone.")){tr.archive.splice(i,1);saveDB();render();}
+      };
+      row.querySelector(".rankbtn").onclick=function(){
+        var rows=[["Date",a.date||""],["Location",a.location||""],[""],["Rank","Player","Total Points","Games","Wins","Losses","Pts Possible","Pts For","Pts Against","% of Pts","% of Possible","Pts/Game","Bonus Points"]];
+        a.results.forEach(function(p,idx){
+          var contested=(p.scored||0)+(p.against||0);
+          var pct=(p.against!=null&&contested>0)?Math.round(100*p.scored/contested)+"%":(p.pct!=null?p.pct+"%":"");
+          var pctP=(p.possible>0)?Math.round(100*(p.scored||0)/p.possible)+"%":(p.pct!=null?p.pct+"%":"");
+          rows.push([idx+1,p.name,p.pts,p.gp,p.w,(p.l!=null?p.l:""),(p.possible!=null?p.possible:""),(p.scored!=null?p.scored:""),(p.against!=null?p.against:""),pct,pctP,(p.ppg!=null?p.ppg:""),(p.bonus!=null?p.bonus:"")]);});
+        doCopy(tsv(rows),host);};
+      row.querySelector(".h2hbtn").onclick=function(){doCopy(a.h2hText||"(no head-to-head saved for this session)",host);};
+      c.appendChild(row);
+    });
+    host.appendChild(c);
+    var clr=document.createElement("button");clr.className="btn ghost";clr.textContent="Clear this track's history";
+    clr.onclick=function(){if(confirm("Delete all saved sessions for this track? This can't be undone.")){tr.archive=[];saveDB();render();}};
+    host.appendChild(clr);
+  }
+
+  function doCopy(text,host){
+    function fallback(){var ex=host.querySelector(".exp");if(ex)ex.remove();
+      var ta=document.createElement("textarea");ta.className="exp";ta.readOnly=true;ta.value=text;host.appendChild(ta);ta.focus();ta.select();toast("Tap & hold the box to copy");}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){toast("Copied — paste into Sheets");}).catch(fallback);}
+    else fallback();
+  }
+
+  loadDB();
+  document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){view=t.dataset.v;render();});});
+  render();
+})();
+</script>
+</body>
+</html>
