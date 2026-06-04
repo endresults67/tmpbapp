@@ -27,8 +27,8 @@
     background-image:radial-gradient(circle at 30% 30%, transparent 2px, var(--ball) 2px);flex:none;}
   header h1{font-size:19px;margin:0;font-weight:600;letter-spacing:-.01em;}
   header .sub{font-size:12px;color:var(--dim);margin:0;}
-  .tabs{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:50;}
-  .tab{flex:1;padding:11px 4px;text-align:center;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;transition:.12s;}
+  .tabs{display:flex;gap:4px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:50;}
+  .tab{flex:1;padding:11px 2px;text-align:center;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:.12s;}
   .tab.on{background:var(--accent);color:#ffffff;border-color:var(--accent);}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
   .field{display:flex;align-items:center;gap:10px;margin-bottom:11px;}
@@ -86,6 +86,14 @@
   .pcard .pname{flex:1;font-size:16px;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .pcard .ptot{font-size:20px;font-weight:700;color:var(--accent);flex:none;text-align:right;}
   .pcard .ptot small{font-size:11px;color:var(--dim);font-weight:500;display:block;margin-top:1px;}
+  .leadbanner{background:linear-gradient(135deg,#2f8f3e,#1f7a2e);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+  .leadbanner .lbtitle{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.85;}
+  .leadbanner .lbname{font-size:22px;font-weight:700;margin:2px 0;}
+  .leadbanner .lbsub{font-size:12px;opacity:.9;}
+  .priorbanner{background:var(--surface2);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:13px;}
+  .priorbanner .pbk{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.05em;}
+  .priorbanner .pbv{font-weight:600;color:var(--text);}
+  .priorbanner .pbd{color:var(--dim);font-size:12px;}
   .statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 6px;}
   .statgrid .st{background:var(--surface2);border-radius:8px;padding:6px 8px;}
   .statgrid .st .v{font-size:15px;font-weight:600;}
@@ -130,7 +138,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">v1.5</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">v1.6.1</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -139,6 +147,7 @@
     <div class="tab" data-v="games">Rounds</div>
     <div class="tab" data-v="rank">Rankings</div>
     <div class="tab" data-v="hist">History</div>
+    <div class="tab" data-v="xfer">Transfer</div>
   </div>
   <div id="view"></div>
 </div>
@@ -205,9 +214,84 @@
       if(s.courts==null)s.courts=3;
     });
   }
-  function saveDB(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}}
+  function saveDB(){try{DB._savedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}}
   function curTrack(){for(var i=0;i<DB.tracks.length;i++)if(DB.tracks[i].id===DB.activeTrackId)return DB.tracks[i];return DB.tracks[0];}
   function S(){return curTrack().current;}
+
+  // ---------- transfer (backup / restore between devices) ----------
+  var TRANSFER_VERSION=1;
+  var UNDO_KEY="pb_undo_v4";
+  function deviceLabel(){
+    try{
+      var lbl=localStorage.getItem("pb_device_label");
+      if(lbl)return lbl;
+    }catch(e){}
+    // guess from platform
+    var ua=(navigator.userAgent||"");
+    if(/iPhone|iPad|iPod/.test(ua))return "iPhone/iPad";
+    if(/Macintosh|Mac OS/.test(ua))return "Mac";
+    if(/Android/.test(ua))return "Android";
+    if(/Windows/.test(ua))return "Windows";
+    return "this device";
+  }
+  function countStats(db){
+    var tracks=(db.tracks||[]).length,sessions=0,games=0;
+    (db.tracks||[]).forEach(function(t){
+      sessions+=1+((t.archive||[]).length);
+      (t.current&&t.current.rounds||[]).forEach(function(c){c.forEach(function(g){if(g.s1!=null&&g.s2!=null)games++;});});
+      (t.archive||[]).forEach(function(a){(a.results||[]).length;});
+    });
+    return {tracks:tracks,sessions:sessions,players:(db.roster||[]).length};
+  }
+  function buildExportPayload(){
+    var snap=JSON.parse(JSON.stringify(DB));
+    var when=Date.now();
+    return {
+      app:"pickleball-roundrobin",
+      transferVersion:TRANSFER_VERSION,
+      exportedAt:when,
+      exportedAtText:new Date(when).toLocaleString(),
+      device:deviceLabel(),
+      summary:countStats(DB),
+      data:snap
+    };
+  }
+  function exportCode(){return JSON.stringify(buildExportPayload());}
+  // parse + validate an incoming code/file; returns {ok, payload, error}
+  function parseImport(text){
+    if(!text||!text.trim())return {ok:false,error:"Nothing to import — the box is empty."};
+    var obj;
+    try{obj=JSON.parse(text.trim());}catch(e){return {ok:false,error:"That doesn't look like valid backup data. Make sure you copied the whole code."};}
+    // accept either a full payload or a raw DB
+    var payload=obj;
+    if(obj && obj.app==="pickleball-roundrobin" && obj.data){payload=obj;}
+    else if(obj && obj.tracks && obj.roster!==undefined){payload={app:"pickleball-roundrobin",transferVersion:0,exportedAt:obj._savedAt||0,exportedAtText:"unknown",device:"unknown",summary:countStats(obj),data:obj};}
+    else return {ok:false,error:"This file isn't a Pickleball backup."};
+    var d=payload.data;
+    if(!d||!Array.isArray(d.tracks)||!Array.isArray(d.roster))return {ok:false,error:"The backup is missing its tracks or players — it may be corrupted."};
+    return {ok:true,payload:payload};
+  }
+  function currentDataTimestamp(){return DB._savedAt||0;}
+  function applyImport(payload){
+    // auto-backup what we're about to overwrite
+    try{localStorage.setItem(UNDO_KEY,JSON.stringify({savedAt:Date.now(),data:JSON.parse(JSON.stringify(DB))}));}catch(e){}
+    DB=payload.data;
+    // normalize through loadDB's guards by saving then reloading
+    saveDB();loadDB();saveDB();
+  }
+  function hasUndo(){try{return !!localStorage.getItem(UNDO_KEY);}catch(e){return false;}}
+  function undoImport(){
+    try{
+      var raw=localStorage.getItem(UNDO_KEY);if(!raw)return false;
+      var u=JSON.parse(raw);if(!u||!u.data)return false;
+      // before undoing, stash current as the new undo (so undo is itself undoable both ways)
+      var cur=JSON.parse(JSON.stringify(DB));
+      DB=u.data;saveDB();loadDB();
+      localStorage.setItem(UNDO_KEY,JSON.stringify({savedAt:Date.now(),data:cur}));
+      saveDB();
+      return true;
+    }catch(e){return false;}
+  }
 
   // wrap a v3 single-track DB into a v4 tracks DB
   function migrateV3toV4(v3){
@@ -278,7 +362,7 @@
   function roundsToMeet(n){return Math.max(1,Math.ceil((n-1)/3));}
   function pkey(a,b){return a<b?a+"|"+b:b+"|"+a;}
 
-  // ---------- pairing engine (repeat-avoiding) ----------
+  // ---------- pairing engine (repeat-avoiding, partner-variety first) ----------
   function formPairs(playing, pc){
     function attempt(order){
       var avail=order.slice(),pairs=[],maxRep=0,total=0;
@@ -291,7 +375,8 @@
       return {pairs:pairs,maxRep:maxRep,total:total};
     }
     var bestRes=null;
-    for(var t=0;t<200;t++){
+    // more restarts = stronger push toward everyone partnering everyone
+    for(var t=0;t<600;t++){
       var order=playing.slice();
       for(var i=order.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=order[i];order[i]=order[j];order[j]=tmp;}
       var res=attempt(order);
@@ -414,24 +499,28 @@
     sess=sess||S();
     var carry=(sess.carryFrom&&sess.carryFrom.stats)?sess.carryFrom.stats:{};
     var m={};
-    function ensure(id){if(!m[id])m[id]={id:id,pts:0,scored:0,against:0,bonus:0,w:0,l:0,gp:0,possible:0};return m[id];}
+    function ensure(id){if(!m[id])m[id]={id:id,pts:0,scored:0,against:0,bonus:0,w:0,l:0,gp:0,possible:0,wsum:0};return m[id];}
     sess.players.forEach(function(id){ensure(id);});
     Object.keys(carry).forEach(function(id){
       var e=ensure(id),cy=carry[id];
       e.pts+=cy.pts||0;e.w+=cy.w||0;e.l+=cy.l||0;e.gp+=cy.gp||0;
-      e.scored+=cy.scored||0;e.against+=cy.against||0;e.bonus+=cy.bonus||0;e.possible+=cy.possible||0;
+      e.scored+=cy.scored||0;e.against+=cy.against||0;e.bonus+=cy.bonus||0;e.possible+=cy.possible||0;e.wsum+=cy.wsum||0;
     });
     var target=sess.scoreTo||11;
+    // per-game weighted value = point-share in that game + 0.5 if won
+    function addGame(ids,my,opp,won){ids.forEach(function(x){var e=ensure(x);var tot=my+opp;var share=tot>0?my/tot:0;e.wsum+=share+(won?0.5:0);});}
     sess.rounds.forEach(function(courts){courts.forEach(function(g){
       if(g.s1==null||g.s2==null)return;
       g.t1.concat(g.t2).forEach(function(x){var e=ensure(x);e.gp++;e.possible+=target;});
       g.t1.forEach(function(x){var e=ensure(x);e.pts+=g.s1;e.scored+=g.s1;e.against+=g.s2;});
       g.t2.forEach(function(x){var e=ensure(x);e.pts+=g.s2;e.scored+=g.s2;e.against+=g.s1;});
-      if(g.s1>g.s2){g.t1.forEach(function(x){var e=ensure(x);e.w++;e.pts+=sess.winBonus;e.bonus+=sess.winBonus;});g.t2.forEach(function(x){ensure(x).l++;});}
-      else if(g.s2>g.s1){g.t2.forEach(function(x){var e=ensure(x);e.w++;e.pts+=sess.winBonus;e.bonus+=sess.winBonus;});g.t1.forEach(function(x){ensure(x).l++;});}
+      var t1won=g.s1>g.s2,t2won=g.s2>g.s1;
+      addGame(g.t1,g.s1,g.s2,t1won);addGame(g.t2,g.s2,g.s1,t2won);
+      if(t1won){g.t1.forEach(function(x){var e=ensure(x);e.w++;e.pts+=sess.winBonus;e.bonus+=sess.winBonus;});g.t2.forEach(function(x){ensure(x).l++;});}
+      else if(t2won){g.t2.forEach(function(x){var e=ensure(x);e.w++;e.pts+=sess.winBonus;e.bonus+=sess.winBonus;});g.t1.forEach(function(x){ensure(x).l++;});}
     });});
     var arr=Object.keys(m).map(function(k){return m[k];});
-    arr.forEach(function(p){var contested=p.scored+p.against;p.pct=contested>0?Math.round(100*p.scored/contested):0;p.pctPoss=p.possible>0?Math.round(100*p.scored/p.possible):0;p.ppg=p.gp>0?(p.scored/p.gp):0;});
+    arr.forEach(function(p){var contested=p.scored+p.against;p.pct=contested>0?Math.round(100*p.scored/contested):0;p.pctPoss=p.possible>0?Math.round(100*p.scored/p.possible):0;p.ppg=p.gp>0?(p.scored/p.gp):0;p.weighted=p.gp>0?Math.round(100*p.wsum/p.gp):0;});
     return arr.sort(function(a,b){return b.pts-a.pts||b.w-a.w||b.gp-a.gp;});
   }
   function anyScores(sess){sess=sess||S();return sess.rounds.some(function(c){return c.some(function(g){return g.s1!=null&&g.s2!=null;});});}
@@ -523,7 +612,7 @@
       document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("on",t.dataset.v===tabFor);});
       var host=document.getElementById("view");host.innerHTML="";
       var second=tr.type==="free"?renderFree:renderGames;
-      ({setup:renderSetup,games:second,rank:renderRank,hist:renderHist})[view](host);
+      ({setup:renderSetup,games:second,rank:renderRank,hist:renderHist,xfer:renderTransfer})[view](host);
     }catch(e){
       document.getElementById("view").innerHTML='<div class="card"><p class="empty">Redraw hiccup — tap another tab and back. ('+esc(e.message)+')</p></div>';
     }
@@ -573,6 +662,10 @@
     var s=S();var tr=curTrack();
     if(tr.type==="free"){
       host.appendChild(noteEl("info","This is a free-play track. Add and score one-off games on the Games tab. Players are picked per game."));
+      if(anyScores()){
+        var nsf=document.createElement("button");nsf.className="btn primary";nsf.textContent="Start new session";nsf.onclick=startNewSessionFromSetup;host.appendChild(nsf);
+        host.appendChild(footEl("Saves the current games to History, then starts a fresh session."));
+      }
       var rcard=document.createElement("div");rcard.className="card";
       rcard.innerHTML='<p class="lbl">Saved players ('+DB.roster.length+')</p>';
       if(!DB.roster.length)rcard.innerHTML+='<p class="empty">No saved players yet — add some below or on the Games tab.</p>';
@@ -589,7 +682,6 @@
       rcard.appendChild(ar);host.appendChild(rcard);
       ar.querySelector("#rpb").onclick=function(){var v=ar.querySelector("#rp").value.trim();if(v){addToRoster(v);saveDB();render();}};
       ar.querySelector("#rp").onkeydown=function(e){if(e.key==="Enter"){var v=e.target.value.trim();if(v){addToRoster(v);saveDB();render();}}};
-      var ns=document.createElement("button");ns.className="btn";ns.style.marginTop="8px";ns.textContent="Start new session";ns.onclick=startNewSession;host.appendChild(ns);
       var ca=document.createElement("button");ca.className="btn ghost";ca.style.marginTop="8px";ca.textContent="Clear data";ca.onclick=clearTrackData;host.appendChild(ca);
       return;
     }
@@ -599,6 +691,18 @@
     host.appendChild(sess);
     sess.querySelector("#f_date").onchange=function(e){s.date=e.target.value;saveDB();};
     sess.querySelector("#f_loc").oninput=function(e){s.location=e.target.value;saveDB();};
+
+    // If a session is already underway (rounds generated or scores in), offer a clear way to start fresh
+    if(s.rounds&&s.rounds.length){
+      var nsCard=document.createElement("div");nsCard.className="card";
+      nsCard.innerHTML='<p class="lbl">Session in progress</p>'+
+        '<p style="font-size:13px;color:var(--muted);margin:0 0 8px">Rounds are already set up'+(anyScores()?" and scores are entered":"")+' for this session.</p>';
+      var nsBtn=document.createElement("button");nsBtn.className="btn primary";nsBtn.textContent="Start new session";
+      nsBtn.onclick=startNewSessionFromSetup;
+      nsCard.appendChild(nsBtn);
+      nsCard.appendChild(footEl(anyScores()?"Saves the current session to History first, then clears the rounds so you can set up a new one.":"Clears the current rounds so you can set up a new session."));
+      host.appendChild(nsCard);
+    }
 
     var targetLocked=(s.rounds&&s.rounds.length>0);
     var cfg=document.createElement("div");cfg.className="card";
@@ -654,7 +758,6 @@
     inp.onkeydown=function(e){if(e.key==="Enter")addP();};
 
     host.appendChild(footEl(s.players.length>=4?"Ready — generate rounds on the Rounds tab.":"Add at least 4 players to begin."));
-    var ns=document.createElement("button");ns.className="btn";ns.style.marginTop="8px";ns.textContent="Start new session";ns.onclick=startNewSession;host.appendChild(ns);
     var ca=document.createElement("button");ca.className="btn ghost";ca.style.marginTop="8px";ca.textContent="Clear data";
     ca.onclick=clearTrackData;host.appendChild(ca);
   }
@@ -686,7 +789,7 @@
   function snapshot(s){
     var st=standings(s);
     return {date:s.date,location:s.location,winBonus:s.winBonus,
-      results:st.map(function(p){return {id:p.id,name:nameOf(p.id),pts:p.pts,scored:p.scored,against:p.against,bonus:p.bonus,w:p.w,l:p.l,gp:p.gp,possible:p.possible,pct:p.pct,ppg:Math.round(p.ppg*10)/10};}),
+      results:st.map(function(p){return {id:p.id,name:nameOf(p.id),pts:p.pts,scored:p.scored,against:p.against,bonus:p.bonus,w:p.w,l:p.l,gp:p.gp,possible:p.possible,pct:p.pct,ppg:Math.round(p.ppg*10)/10,wsum:p.wsum,weighted:p.weighted};}),
       h2hText:h2hExportText(s),h2h:headToHead(s),savedAt:Date.now()};
   }
   // Clear the CURRENT session of the active track: archive it first (if it has scores),
@@ -702,19 +805,36 @@
     toast("Data cleared — previous session saved to History");
   }
 
-  function startNewSession(){
+  function startNewSessionFromSetup(){
     var tr=curTrack();var s=tr.current;
-    if(!anyScores()){
-      toast("No scores yet — this session is already empty");
-      return;
-    }
-    if(!confirm("Start a new session? The current session will be saved to History, and a fresh one will begin for this track."))return;
-    tr.archive.unshift(snapshot(s));
+    var had=anyScores();
+    var msg=had
+      ? "Start a new session on the “"+tr.name+"” track?\n\nThe current session will be saved to History first, then cleared so you can set up a new one."
+      : "Start a new session on the “"+tr.name+"” track?\n\nThis clears the current rounds so you can set up a new one. (Nothing to save yet.)";
+    if(!confirm(msg))return;
+    if(had)tr.archive.unshift(snapshot(s));
     var keep=s.players.slice(),c=s.courts,to=s.scoreTo,wb=s.winBonus;
     tr.current=blankSession();
     tr.current.players=keep;tr.current.courts=c;tr.current.scoreTo=to;tr.current.winBonus=wb;
     saveDB();view="setup";render();
-    toast("New session started — previous one saved to History");
+    if(had)alert("Saved to History. “"+tr.name+"” now has "+tr.archive.length+" saved session"+(tr.archive.length===1?"":"s")+".\n\nYou can set up the new session now — your players carried over.");
+    else toast("Fresh session — set it up below");
+  }
+
+  function endSession(){
+    var tr=curTrack();var s=tr.current;
+    if(!anyScores()){
+      alert("Nothing to save yet.\n\nThis session ("+tr.name+") has no completed games. Enter at least one final score first, then End session.");
+      return;
+    }
+    if(!confirm("End this session on the “"+tr.name+"” track?\n\nIt will be saved to History, and a fresh session will be ready for next time."))return;
+    tr.archive.unshift(snapshot(s));
+    var savedCount=tr.archive.length;
+    var keep=s.players.slice(),c=s.courts,to=s.scoreTo,wb=s.winBonus;
+    tr.current=blankSession();
+    tr.current.players=keep;tr.current.courts=c;tr.current.scoreTo=to;tr.current.winBonus=wb;
+    saveDB();view="hist";render();
+    alert("Saved to History.\n\n“"+tr.name+"” now has "+savedCount+" saved session"+(savedCount===1?"":"s")+". You're looking at the History tab for this track.");
   }
 
   function renderGames(host){
@@ -907,6 +1027,9 @@
       host.appendChild(another);refreshAnother();
     }
     if(!swapOn){
+      var endb=document.createElement("button");endb.className="btn";endb.style.marginTop="6px";endb.textContent="End session & save to History";
+      endb.onclick=endSession;
+      host.appendChild(endb);
       var regen=document.createElement("button");regen.className="btn ghost";regen.style.color="var(--muted)";regen.textContent="Regenerate schedule";
       regen.onclick=function(){if(anyScores()&&!confirm("Regenerate? Clears entered scores."))return;
         s._swap=false;s._swapSel=null;
@@ -1012,6 +1135,7 @@
       host.appendChild(noteEl("info","No games yet. Pick teams, enter the score, and Save."));
     }
 
+    var endb=document.createElement("button");endb.className="btn";endb.style.marginTop="4px";endb.textContent="End session & save to History";endb.onclick=endSession;host.appendChild(endb);
     var ca=document.createElement("button");ca.className="btn ghost";ca.textContent="Clear data";ca.onclick=clearTrackData;host.appendChild(ca);
   }
 
@@ -1099,8 +1223,8 @@
     // sum EVERY session ever played across ALL tracks: current sessions + archived.
     // each session counted by its own games (carry-forward seeding excluded to avoid double-count).
     var agg={};
-    function ensure(id,name){if(!agg[id])agg[id]={id:id,name:name||null,pts:0,scored:0,against:0,bonus:0,w:0,l:0,gp:0,possible:0};return agg[id];}
-    function addStat(id,name,p){var e=ensure(id,name);e.pts+=p.pts||0;e.scored+=p.scored||0;e.against+=p.against||0;e.bonus+=p.bonus||0;e.w+=p.w||0;e.l+=p.l||0;e.gp+=p.gp||0;e.possible+=p.possible||0;if(name&&!e.name)e.name=name;}
+    function ensure(id,name){if(!agg[id])agg[id]={id:id,name:name||null,pts:0,scored:0,against:0,bonus:0,w:0,l:0,gp:0,possible:0,wsum:0};return agg[id];}
+    function addStat(id,name,p){var e=ensure(id,name);e.pts+=p.pts||0;e.scored+=p.scored||0;e.against+=p.against||0;e.bonus+=p.bonus||0;e.w+=p.w||0;e.l+=p.l||0;e.gp+=p.gp||0;e.possible+=p.possible||0;e.wsum+=p.wsum||0;if(name&&!e.name)e.name=name;}
     DB.tracks.forEach(function(t){
       // current session (own games only)
       sessionOwnStats(t.current).forEach(function(p){addStat(p.id,nameOf(p.id),p);});
@@ -1113,12 +1237,12 @@
             var hit=DB.roster.filter(function(rr){return rr.name.toLowerCase()===(r.name||"").toLowerCase();})[0];
             id=hit?hit.id:("name:"+(r.name||"?").toLowerCase());
           }
-          addStat(id,r.name,{pts:r.pts,scored:r.scored,against:r.against,bonus:r.bonus,w:r.w,l:r.l,gp:r.gp,possible:r.possible});
+          addStat(id,r.name,{pts:r.pts,scored:r.scored,against:r.against,bonus:r.bonus,w:r.w,l:r.l,gp:r.gp,possible:r.possible,wsum:r.wsum});
         });
       });
     });
     var arr=Object.keys(agg).map(function(k){return agg[k];});
-    arr.forEach(function(p){p.pct=pctPoints(p);p.pctPoss=pctPossible(p);p.ppg=p.gp>0?(p.scored/p.gp):0;});
+    arr.forEach(function(p){p.pct=pctPoints(p);p.pctPoss=pctPossible(p);p.ppg=p.gp>0?(p.scored/p.gp):0;p.weighted=p.gp>0?Math.round(100*p.wsum/p.gp):0;});
     return arr.sort(function(a,b){return b.pts-a.pts||b.w-a.w||b.gp-a.gp;});
   }
   // name lookup that also handles combined "name:" pseudo-ids
@@ -1126,22 +1250,50 @@
 
   function renderRank(host){
     var s=S();var tr=curTrack();
-    if(!window._rankMode)window._rankMode="track";
-    // toggle (only meaningful if more than one track)
-    if(DB.tracks.length>1){
-      var seg=document.createElement("div");seg.className="gtype";seg.style.marginBottom="12px";
-      seg.innerHTML='<button id="rm_t" class="'+(window._rankMode==="track"?"on":"")+'">This track</button><button id="rm_a" class="'+(window._rankMode==="all"?"on":"")+'">All tracks</button>';
-      host.appendChild(seg);
-      seg.querySelector("#rm_t").onclick=function(){window._rankMode="track";render();};
-      seg.querySelector("#rm_a").onclick=function(){window._rankMode="all";render();};
+    if(!window._rankMode)window._rankMode="session";
+    // scope toggle: this session | this track (all sessions) | all tracks
+    var multiTrack=DB.tracks.length>1;
+    var seg=document.createElement("div");seg.className="gtype";seg.style.marginBottom="12px";
+    seg.innerHTML='<button id="rm_s" class="'+(window._rankMode==="session"?"on":"")+'">This session</button>'+
+      '<button id="rm_t" class="'+(window._rankMode==="track"?"on":"")+'">This track</button>'+
+      (multiTrack?'<button id="rm_a" class="'+(window._rankMode==="all"?"on":"")+'">All tracks</button>':'');
+    host.appendChild(seg);
+    seg.querySelector("#rm_s").onclick=function(){window._rankMode="session";render();};
+    seg.querySelector("#rm_t").onclick=function(){window._rankMode="track";render();};
+    if(multiTrack)seg.querySelector("#rm_a").onclick=function(){window._rankMode="all";render();};
+    if(window._rankMode==="all"&&!multiTrack)window._rankMode="track";
+
+    var mode=window._rankMode;
+    var combined=(mode==="all");
+    var r=combined?combinedStandings():(mode==="track"?trackCumulativeStandings(tr):standings(s));
+    var hasAny=r.some(function(p){return p.gp>0;})||(mode==="session"&&s.carryFrom);
+
+    // --- Ladder leader + prior session winner callouts (track scope) ---
+    if(mode==="track"&&tr.type!=="free"){
+      var doneWeeks=(tr.archive||[]).length;
+      if(r.length&&r[0].gp>0){
+        var leadName=combinedName(r[0]);
+        var lc=document.createElement("div");lc.className="leadbanner";
+        lc.innerHTML='<div class="lbtitle">Ladder leader'+(doneWeeks>0?" — through "+(doneWeeks+1)+" session"+(doneWeeks+1>1?"s":""):"")+'</div><div class="lbname">🏆 '+esc(leadName)+'</div><div class="lbsub">'+r[0].pts+' total pts · weighted '+r[0].weighted+'</div>';
+        host.appendChild(lc);
+      }
+      // prior session winner = most recent archived session's top result
+      if(doneWeeks>0){
+        var prev=tr.archive[0];
+        if(prev&&prev.results&&prev.results.length){
+          var pw=prev.results[0];
+          var pc=document.createElement("div");pc.className="priorbanner";
+          pc.innerHTML='<span class="pbk">Last session winner</span> <span class="pbv">'+esc(pw.name)+'</span>'+(prev.date?' <span class="pbd">('+esc(prev.date)+')</span>':'');
+          host.appendChild(pc);
+        }
+      }
     }
-    var combined=(window._rankMode==="all"&&DB.tracks.length>1);
-    var r=combined?combinedStandings():standings(s);
-    var hasAny=combined?r.some(function(p){return p.gp>0;}):(anyScores()||s.carryFrom);
+
     if(!hasAny){
-      host.appendChild(el_empty(combined?"No games recorded in any track yet.":"No scores entered yet. Enter scores and standings appear here live."));
+      host.appendChild(el_empty(combined?"No games recorded in any track yet.":(mode==="track"?"No games recorded in this track yet.":"No scores entered yet. Enter scores and standings appear here live.")));
     }else{
-      if(combined)host.appendChild(noteEl("info","Combined standings across all tracks. Head-to-head detail is per-track (tap a player shows this track only)."));
+      if(combined)host.appendChild(noteEl("info","Combined standings across all tracks and sessions. Head-to-head detail is per-track."));
+      else if(mode==="track")host.appendChild(noteEl("info","Cumulative standings across all sessions in this track (the full ladder so far)."));
       else if(s.carryFrom)host.appendChild(noteEl("info","Standings include totals and head-to-head carried from the previous session."));
       r.forEach(function(p,i){
         var card=document.createElement("div");card.className="pcard"+(i===0?" top":"");
@@ -1149,6 +1301,7 @@
           '<div class="pname">'+esc(combined?combinedName(p):nameOf(p.id))+'</div>'+
           '<div class="ptot">'+p.pts+'<small>total pts</small></div></div>'+
           '<div class="statgrid">'+
+            '<div class="st"><div class="v">'+(p.weighted!=null?p.weighted:0)+'</div><div class="k">Weighted</div></div>'+
             '<div class="st"><div class="v">'+p.gp+'</div><div class="k">Games</div></div>'+
             '<div class="st"><div class="v">'+p.w+'–'+p.l+'</div><div class="k">W–L</div></div>'+
             '<div class="st"><div class="v">'+(p.possible!=null?p.possible:0)+'</div><div class="k">Pts possible</div></div>'+
@@ -1162,7 +1315,7 @@
         else card.style.cursor="default";
         host.appendChild(card);
       });
-      host.appendChild(footEl("Total pts = points scored + "+(combined?"win bonus":(s.winBonus+"/win"))+". Pts possible = games × game target. % of pts = your points ÷ all points in your games (for + against). % of possible = points for ÷ pts possible (can top 100% on overtime). Pts/game = points for ÷ games."));
+      host.appendChild(footEl("Weighted = avg per game of (your share of points + 0.5 if you won) ×100 — fair across different game counts. Total pts = points scored + "+(combined?"win bonus":(s.winBonus+"/win"))+". Pts possible = games × game target. % of pts = your points ÷ all points in your games. % of possible = points for ÷ pts possible (can top 100% on overtime). Pts/game = points for ÷ games."));
     }
     // ---- Share / download (CSV file, all-in-one: rankings + head-to-head) ----
     var shareLbl=document.createElement("p");shareLbl.className="lbl";shareLbl.style.marginTop="14px";shareLbl.textContent="Share / download (opens your phone\u2019s share menu, or saves a file)";
@@ -1203,21 +1356,21 @@
   // cumulative standings for ONE track: current session own-games + all archived results
   function trackCumulativeStandings(tr){
     var agg={};
-    function ensure(id,name){if(!agg[id])agg[id]={id:id,name:name||null,pts:0,scored:0,against:0,bonus:0,w:0,l:0,gp:0,possible:0};return agg[id];}
-    function addStat(id,name,p){var e=ensure(id,name);e.pts+=p.pts||0;e.scored+=p.scored||0;e.against+=p.against||0;e.bonus+=p.bonus||0;e.w+=p.w||0;e.l+=p.l||0;e.gp+=p.gp||0;e.possible+=p.possible||0;if(name&&!e.name)e.name=name;}
+    function ensure(id,name){if(!agg[id])agg[id]={id:id,name:name||null,pts:0,scored:0,against:0,bonus:0,w:0,l:0,gp:0,possible:0,wsum:0};return agg[id];}
+    function addStat(id,name,p){var e=ensure(id,name);e.pts+=p.pts||0;e.scored+=p.scored||0;e.against+=p.against||0;e.bonus+=p.bonus||0;e.w+=p.w||0;e.l+=p.l||0;e.gp+=p.gp||0;e.possible+=p.possible||0;e.wsum+=p.wsum||0;if(name&&!e.name)e.name=name;}
     sessionOwnStats(tr.current).forEach(function(p){addStat(p.id,nameOf(p.id),p);});
     (tr.archive||[]).forEach(function(a){(a.results||[]).forEach(function(r){
       var id=r.id;
       if(!id){var hit=DB.roster.filter(function(rr){return rr.name.toLowerCase()===(r.name||"").toLowerCase();})[0];id=hit?hit.id:("name:"+(r.name||"?").toLowerCase());}
-      addStat(id,r.name,{pts:r.pts,scored:r.scored,against:r.against,bonus:r.bonus,w:r.w,l:r.l,gp:r.gp,possible:r.possible});
+      addStat(id,r.name,{pts:r.pts,scored:r.scored,against:r.against,bonus:r.bonus,w:r.w,l:r.l,gp:r.gp,possible:r.possible,wsum:r.wsum});
     });});
     var arr=Object.keys(agg).map(function(k){return agg[k];});
-    arr.forEach(function(p){p.pct=pctPoints(p);p.pctPoss=pctPossible(p);p.ppg=p.gp>0?(p.scored/p.gp):0;});
+    arr.forEach(function(p){p.pct=pctPoints(p);p.pctPoss=pctPossible(p);p.ppg=p.gp>0?(p.scored/p.gp):0;p.weighted=p.gp>0?Math.round(100*p.wsum/p.gp):0;});
     return arr.sort(function(a,b){return b.pts-a.pts||b.w-a.w||b.gp-a.gp;});
   }
   function rankRowsFrom(standArr,nameFn){
-    var rows=[["Rank","Player","Total Points","Games","Wins","Losses","Pts Possible","Pts For","Pts Against","% of Pts","% of Possible","Pts/Game","Bonus Points"]];
-    standArr.forEach(function(p,i){rows.push([i+1,nameFn(p),p.pts,p.gp,p.w,p.l,(p.possible!=null?p.possible:0),p.scored,(p.against!=null?p.against:0),p.pct+"%",(p.pctPoss!=null?p.pctPoss:0)+"%",Math.round(p.ppg*10)/10,p.bonus]);});
+    var rows=[["Rank","Player","Total Points","Weighted Score","Games","Wins","Losses","Pts Possible","Pts For","Pts Against","% of Pts","% of Possible","Pts/Game","Bonus Points"]];
+    standArr.forEach(function(p,i){rows.push([i+1,nameFn(p),p.pts,(p.weighted!=null?p.weighted:0),p.gp,p.w,p.l,(p.possible!=null?p.possible:0),p.scored,(p.against!=null?p.against:0),p.pct+"%",(p.pctPoss!=null?p.pctPoss:0)+"%",Math.round(p.ppg*10)/10,p.bonus]);});
     return rows;
   }
   function combinedExportText(){
@@ -1420,6 +1573,145 @@
     var clr=document.createElement("button");clr.className="btn ghost";clr.textContent="Clear this track's history";
     clr.onclick=function(){if(confirm("Delete all saved sessions for this track? This can't be undone.")){tr.archive=[];saveDB();render();}};
     host.appendChild(clr);
+  }
+
+  function renderTransfer(host){
+    var stamp=currentDataTimestamp();
+    var sum=countStats(DB);
+    // ---- status ----
+    var status=document.createElement("div");status.className="card";
+    status.innerHTML='<p class="lbl">This device ('+esc(deviceLabel())+')</p>'+
+      '<p style="font-size:14px;margin:2px 0">Holds: <b>'+sum.tracks+'</b> track'+(sum.tracks===1?"":"s")+', <b>'+sum.players+'</b> players, <b>'+sum.sessions+'</b> session'+(sum.sessions===1?"":"s")+'.</p>'+
+      '<p style="font-size:12px;color:var(--muted);margin:2px 0">Last changed: '+(stamp?esc(new Date(stamp).toLocaleString()):"unknown")+'</p>';
+    host.appendChild(status);
+
+    host.appendChild(noteEl("info","Move everything (all tracks, players, sessions, history) to another device. This works anytime — even with just a setup and no scores yet. You do NOT need to finish a session first."));
+
+    var howto=document.createElement("div");howto.className="card";
+    howto.innerHTML='<p class="lbl">Mac → iPhone, step by step</p>'+
+      '<p style="font-size:13px;line-height:1.5;margin:4px 0;color:var(--text)">'+
+      '<b>1.</b> On the device that HAS the data, tap <b>Share transfer code</b> below.<br>'+
+      '<b>2.</b> Pick how to send it — <b>AirDrop</b> to your iPhone is easiest (or Messages/Mail to yourself).<br>'+
+      '<b>3.</b> On the iPhone, open the message/AirDrop, copy the code, and open this same Transfer tab here in the app.<br>'+
+      '<b>4.</b> Paste it into the box under <b>“Load onto this device”</b> and tap <b>Load from code</b>.</p>'+
+      '<p style="font-size:12px;color:var(--muted);margin:4px 0">No AirDrop? Use <b>Copy transfer code</b> instead and paste it into any message to yourself. Or use the backup file.</p>';
+    host.appendChild(howto);
+
+    // ================= SEND (EXPORT) =================
+    var sendCard=document.createElement("div");sendCard.className="card";
+    sendCard.innerHTML='<p class="lbl">① Send / back up FROM this device</p>'+
+      '<p style="font-size:13px;color:var(--muted);margin:0 0 8px">Creates a copy of everything on this device.</p>';
+    host.appendChild(sendCard);
+
+    // Method A1: SHARE code (opens native share sheet -> AirDrop/Messages/Mail)
+    var shareBtn=document.createElement("button");shareBtn.className="btn primary";shareBtn.textContent="Share transfer code";
+    shareBtn.onclick=function(){
+      var code=exportCode();
+      var box=document.getElementById("xfer_outbox");if(box)box.value=code;
+      try{
+        if(navigator.share){navigator.share({title:"Pickleball transfer code",text:code}).then(function(){toast("Shared — pick AirDrop or Messages");}).catch(function(){toast("Share cancelled — code is in the box below");});return;}
+      }catch(e){}
+      // no share API (e.g. desktop Chrome): fall back to clipboard + show box
+      copyToClip(code,box);
+    };
+    sendCard.appendChild(shareBtn);
+
+    // Method A2: copy code
+    var copyBtn=document.createElement("button");copyBtn.className="btn";copyBtn.style.marginTop="8px";copyBtn.textContent="Copy transfer code";
+    copyBtn.onclick=function(){
+      var code=exportCode();
+      var box=document.getElementById("xfer_outbox");if(box)box.value=code;
+      copyToClip(code,box);
+    };
+    sendCard.appendChild(copyBtn);
+    function copyToClip(code,box){
+      try{
+        if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(code).then(function(){toast("Code copied — now paste it into a message or AirDrop to your phone");}).catch(function(){selectBox(box);});}
+        else selectBox(box);
+      }catch(e){selectBox(box);}
+    }
+    function selectBox(box){if(box){box.focus();box.select();toast("Tap & hold the box, then Copy");}}
+    var outbox=document.createElement("textarea");outbox.id="xfer_outbox";outbox.className="exp";outbox.readOnly=true;outbox.placeholder="Your transfer code appears here. Send it to the other device by AirDrop, Messages, or email — then load it there.";outbox.style.minHeight="70px";
+    sendCard.appendChild(outbox);
+
+    // Method B: download file
+    var dlBtn=document.createElement("button");dlBtn.className="btn";dlBtn.style.marginTop="8px";dlBtn.textContent="Download backup file";
+    dlBtn.onclick=function(){
+      var code=exportCode();
+      var blob=new Blob([code],{type:"application/json"});
+      var fn="pickleball-backup-"+new Date().toISOString().slice(0,10)+".json";
+      try{
+        if(navigator.canShare){var file=new File([blob],fn,{type:"application/json"});if(navigator.canShare({files:[file]})){navigator.share({files:[file],title:"Pickleball backup"}).then(function(){toast("Shared");}).catch(function(){doDl();});return;}}
+        doDl();
+      }catch(e){doDl();}
+      function doDl(){try{var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},500);toast("Saved "+fn);}catch(e){toast("Couldn't save file here — use the code instead");}}
+    };
+    sendCard.appendChild(dlBtn);
+
+    // ================= RECEIVE (IMPORT) =================
+    var recvCard=document.createElement("div");recvCard.className="card";
+    recvCard.innerHTML='<p class="lbl">② Load ONTO this device</p>'+
+      '<p style="font-size:13px;color:var(--muted);margin:0 0 8px">Replaces everything on this device with the copy you bring in. A safety backup is saved first, so you can undo.</p>';
+    host.appendChild(recvCard);
+
+    var inbox=document.createElement("textarea");inbox.id="xfer_inbox";inbox.className="exp";inbox.placeholder="Paste the transfer code here…";inbox.style.minHeight="70px";
+    recvCard.appendChild(inbox);
+    var pasteHint=document.createElement("p");pasteHint.style.cssText="font-size:12px;color:var(--muted);margin:6px 0";pasteHint.textContent="Tip: tap in the box and choose Paste, then tap “Load from code.”";
+    recvCard.appendChild(pasteHint);
+
+    var loadCodeBtn=document.createElement("button");loadCodeBtn.className="btn primary";loadCodeBtn.textContent="Load from code";
+    loadCodeBtn.onclick=function(){doImport(document.getElementById("xfer_inbox").value);};
+    recvCard.appendChild(loadCodeBtn);
+
+    // file picker
+    var fileWrap=document.createElement("div");fileWrap.style.marginTop="8px";
+    var fileInput=document.createElement("input");fileInput.type="file";fileInput.accept=".json,application/json,text/plain";fileInput.style.cssText="display:block;width:100%;font-size:13px;margin-top:4px";
+    fileInput.onchange=function(e){
+      var f=e.target.files&&e.target.files[0];if(!f)return;
+      var reader=new FileReader();
+      reader.onload=function(){doImport(String(reader.result));};
+      reader.onerror=function(){toast("Couldn't read that file");};
+      reader.readAsText(f);
+    };
+    var fileLbl=document.createElement("p");fileLbl.style.cssText="font-size:13px;color:var(--muted);margin:0";fileLbl.textContent="…or load a backup file:";
+    fileWrap.appendChild(fileLbl);fileWrap.appendChild(fileInput);
+    recvCard.appendChild(fileWrap);
+
+    // undo
+    if(hasUndo()){
+      var undoCard=document.createElement("div");undoCard.className="card";
+      undoCard.innerHTML='<p class="lbl">Undo</p><p style="font-size:13px;color:var(--muted);margin:0 0 8px">Restore the data that was on this device before your last import.</p>';
+      var undoBtn=document.createElement("button");undoBtn.className="btn";undoBtn.textContent="Undo last import";
+      undoBtn.onclick=function(){
+        if(confirm("Undo the last import and restore the previous data on this device?")){
+          if(undoImport()){toast("Restored previous data");view="xfer";render();}
+          else toast("Nothing to undo");
+        }
+      };
+      undoCard.appendChild(undoBtn);host.appendChild(undoCard);
+    }
+
+    function doImport(text){
+      var res=parseImport(text);
+      if(!res.ok){alert(res.error);return;}
+      var p=res.payload;
+      var incoming=p.summary||countStats(p.data);
+      var incomingTime=p.exportedAt||0;
+      var curTime=currentDataTimestamp();
+      var msg="About to LOAD this onto "+deviceLabel()+":\n\n";
+      msg+="• "+incoming.tracks+" track(s), "+incoming.players+" players, "+incoming.sessions+" session(s)\n";
+      msg+="• From: "+(p.device||"unknown device")+"\n";
+      msg+="• Made: "+(p.exportedAtText||(incomingTime?new Date(incomingTime).toLocaleString():"unknown"))+"\n\n";
+      msg+="This REPLACES everything currently on this device ("+sum.tracks+" tracks, "+sum.players+" players, "+sum.sessions+" sessions). A safety backup will be saved so you can undo.\n";
+      if(incomingTime&&curTime&&incomingTime<curTime){
+        msg+="\n⚠️ WARNING: the data you're loading is OLDER than what's on this device.\nMade: "+new Date(incomingTime).toLocaleString()+"\nThis device: "+new Date(curTime).toLocaleString()+"\nIf someone has been entering scores here, loading older data will overwrite their work.\n";
+      }
+      msg+="\nContinue?";
+      if(!confirm(msg))return;
+      applyImport(p);
+      toast("Loaded! Everything transferred.");
+      view="setup";render();
+    }
   }
 
   function doCopy(text,host){
