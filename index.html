@@ -119,6 +119,10 @@
   .gtype{display:flex;gap:6px;margin-bottom:10px;}
   .gtype button{flex:1;font-size:13px;background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px;cursor:pointer;}
   .gtype button.on{background:var(--accent);color:#ffffff;border-color:var(--accent);font-weight:600;}
+  .sortrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;}
+  .sortrow .sortlbl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px;}
+  .sortchip{font-size:12px;background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:14px;padding:6px 11px;cursor:pointer;}
+  .sortchip.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
   .glist .gitem{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid var(--line);font-size:14px;}
   .glist .gitem:last-child{border-bottom:none;}
   .glist .gitem .gteams{flex:1;min-width:0;}
@@ -138,7 +142,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">v1.7</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">v1.8</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -1269,6 +1273,18 @@
     var r=combined?combinedStandings():(mode==="track"?trackCumulativeStandings(tr):standings(s));
     var hasAny=r.some(function(p){return p.gp>0;})||(mode==="session"&&s.carryFrom);
 
+    // --- sort control ---
+    if(!window._rankSort)window._rankSort="score";
+    var sorts={
+      score:{label:"Score %",fn:function(a,b){return b.rankPct-a.rankPct||b.pct-a.pct||b.gp-a.gp;}},
+      pts:{label:"Total pts",fn:function(a,b){return b.pts-a.pts||b.w-a.w||b.gp-a.gp;}},
+      wins:{label:"Wins",fn:function(a,b){return b.w-a.w||(a.l-b.l)||b.gp-a.gp;}},
+      pctpts:{label:"% of pts",fn:function(a,b){return b.pct-a.pct||b.gp-a.gp;}},
+      ppg:{label:"Pts/game",fn:function(a,b){return b.ppg-a.ppg||b.gp-a.gp;}}
+    };
+    if(!sorts[window._rankSort])window._rankSort="score";
+    r=r.slice().sort(sorts[window._rankSort].fn);
+
     // --- Ladder leader + prior session winner callouts (track scope) ---
     if(mode==="track"&&tr.type!=="free"){
       var doneWeeks=(tr.archive||[]).length;
@@ -1296,6 +1312,15 @@
       if(combined)host.appendChild(noteEl("info","Combined standings across all tracks and sessions. Head-to-head detail is per-track."));
       else if(mode==="track")host.appendChild(noteEl("info","Cumulative standings across all sessions in this track (the full ladder so far)."));
       else if(s.carryFrom)host.appendChild(noteEl("info","Standings include totals and head-to-head carried from the previous session."));
+      // sort chips
+      var sortRow=document.createElement("div");sortRow.className="sortrow";
+      sortRow.innerHTML='<span class="sortlbl">Sort by</span>';
+      ["score","pts","wins","pctpts","ppg"].forEach(function(key){
+        var b=document.createElement("button");b.className="sortchip"+(window._rankSort===key?" on":"");b.textContent=sorts[key].label;
+        b.onclick=function(){window._rankSort=key;render();};
+        sortRow.appendChild(b);
+      });
+      host.appendChild(sortRow);
       r.forEach(function(p,i){
         var card=document.createElement("div");card.className="pcard"+(i===0?" top":"");
         card.innerHTML='<div class="phead"><div class="prk">'+(i===0?"🏆":(i+1))+'</div>'+
@@ -1311,9 +1336,12 @@
             '<div class="st"><div class="v">'+(p.bonus!=null?p.bonus:0)+'</div><div class="k">Win bonus</div></div>'+
             '<div class="st"><div class="v">'+p.pct+'%</div><div class="k">% of pts</div></div>'+
             '<div class="st"><div class="v">'+(Math.round(p.ppg*10)/10)+'</div><div class="k">Pts/game</div></div>'+
-          '</div>'+(combined?"":'<div class="tapnote">tap for head-to-head ▾</div>');
-        if(!combined)card.onclick=function(){openH2H(p.id);};
-        else card.style.cursor="default";
+          '</div>'+'<div class="tapnote">tap for head-to-head ▾</div>';
+        var pid=p.id, pdisplay=combined?combinedName(p):nameOf(p.id);
+        card.onclick=(function(theId,theName,isCombined){return function(){
+          if(isCombined)window._h2hMode="alltracks";
+          openH2H(theId,theName);
+        };})(pid,pdisplay,combined);
         host.appendChild(card);
       });
       host.appendChild(footEl("Score (the ranking) = (points for + win bonus) ÷ points possible, as a %. Can top 100% because of win bonuses and overtime. It's fair across different game counts, so playing more games doesn't help by itself. Pts possible = games × game target ("+ (s.scoreTo||11) +"). Total pts = points for + "+(combined?"win bonus":(s.winBonus+"/win"))+". % of pts = your points ÷ all points in your games. Pts/game = points for ÷ games."));
@@ -1379,30 +1407,38 @@
     return tsv(rows);
   }
 
-  function openH2H(id){
+  function openH2H(id,dispName){
     var host=document.getElementById("view");view="h2h";host.innerHTML="";
     if(!window._h2hMode)window._h2hMode="session";
+    function showName(pid){var n=nameOf(pid);return (n&&n!=="(unknown)")?n:(dispName||n);}
     var back=document.createElement("button");back.className="btn";back.style.marginBottom="10px";back.textContent="‹ Back to rankings";
     back.onclick=function(){view="rank";render();};host.appendChild(back);
     var c=document.createElement("div");c.className="card";
-    c.innerHTML='<div class="phead" style="margin:0"><div class="pname" style="font-size:18px">'+esc(nameOf(id))+'</div></div>';
+    c.innerHTML='<div class="phead" style="margin:0"><div class="pname" style="font-size:18px">'+esc(showName(id))+'</div></div>';
     host.appendChild(c);
 
-    // toggle: this session vs all sessions (matches All-Tracks scope when cumulative)
-    var allTracksScope=(window._rankMode==="all"&&DB.tracks.length>1);
-    var seg=document.createElement("div");seg.className="gtype";seg.style.marginBottom="10px";
-    seg.innerHTML='<button id="h_s" class="'+(window._h2hMode==="session"?"on":"")+'">This session</button><button id="h_a" class="'+(window._h2hMode==="all"?"on":"")+'">All sessions</button>';
+    // scope toggle. With >1 track: This session / All (this track) / All tracks.
+    var multi=DB.tracks.length>1;
+    if(window._h2hMode!=="session"&&window._h2hMode!=="track"&&window._h2hMode!=="alltracks")window._h2hMode="session";
+    if(window._h2hMode==="all")window._h2hMode="track"; // migrate old value
+    var seg=document.createElement("div");seg.className="gtype";seg.style.marginBottom="10px";seg.style.flexWrap="wrap";
+    seg.innerHTML='<button id="h_s" class="'+(window._h2hMode==="session"?"on":"")+'">This session</button>'+
+      '<button id="h_t" class="'+(window._h2hMode==="track"?"on":"")+'">All sessions'+(multi?" (this track)":"")+'</button>'+
+      (multi?'<button id="h_a" class="'+(window._h2hMode==="alltracks"?"on":"")+'">All tracks</button>':'');
     host.appendChild(seg);
-    seg.querySelector("#h_s").onclick=function(){window._h2hMode="session";openH2H(id);};
-    seg.querySelector("#h_a").onclick=function(){window._h2hMode="all";openH2H(id);};
+    seg.querySelector("#h_s").onclick=function(){window._h2hMode="session";openH2H(id,dispName);};
+    seg.querySelector("#h_t").onclick=function(){window._h2hMode="track";openH2H(id,dispName);};
+    if(multi)seg.querySelector("#h_a").onclick=function(){window._h2hMode="alltracks";openH2H(id,dispName);};
 
     var H,scopeLabel;
-    if(window._h2hMode==="all"){
-      H=allTracksScope?cumulativeH2HAllTracks():cumulativeH2HForTrack(curTrack());
-      scopeLabel=allTracksScope?"All sessions, all tracks":"All sessions in "+curTrack().name;
-      var gaps=archivedH2HGaps(allTracksScope);
-      if(gaps>0)host.appendChild(noteEl("info",scopeLabel+". Note: "+gaps+" older session"+(gaps>1?"s":"")+" archived before this feature can\u2019t be included (no detailed data was saved then)."));
-      else host.appendChild(noteEl("info",scopeLabel+"."));
+    if(window._h2hMode==="alltracks"){
+      H=cumulativeH2HAllTracks();scopeLabel="All sessions, all tracks";
+      var gapsA=archivedH2HGaps(true);
+      host.appendChild(noteEl("info",scopeLabel+(gapsA>0?". Note: "+gapsA+" older session"+(gapsA>1?"s":"")+" archived before this feature can\u2019t be included.":".")));
+    }else if(window._h2hMode==="track"){
+      H=cumulativeH2HForTrack(curTrack());scopeLabel="All sessions in "+curTrack().name;
+      var gapsT=archivedH2HGaps(false);
+      host.appendChild(noteEl("info",scopeLabel+(gapsT>0?". Note: "+gapsT+" older session"+(gapsT>1?"s":"")+" archived before this feature can\u2019t be included.":".")));
     }else{
       H=headToHead(S());scopeLabel="This session";
     }
