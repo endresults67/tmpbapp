@@ -50,6 +50,9 @@
   .row{display:flex;align-items:center;gap:10px;}
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
   .chip{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:7px 13px;font-size:14px;cursor:pointer;transition:.12s;user-select:none;}
+  .chiprate{font-size:11px;font-weight:700;color:var(--accent);background:rgba(127,217,87,.14);border-radius:8px;padding:1px 5px;margin-left:2px;}
+  .ratingbadge{font-size:12px;font-weight:700;color:var(--accent);background:rgba(127,217,87,.14);border-radius:8px;padding:2px 7px;margin:0 8px;min-width:34px;text-align:center;}
+  .ratingbadge.none{color:var(--dim);background:transparent;font-weight:400;}
   .chip.on{background:var(--chipon);border-color:var(--accent);color:#16402a;font-weight:600;}
   .chip .x{color:var(--dim);margin-left:6px;font-size:12px;}
   .pname-row{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
@@ -142,7 +145,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">v1.8</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">v1.9</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -191,7 +194,7 @@
     var raw=null;
     try{raw=localStorage.getItem(KEY);}catch(e){}
     if(raw){
-      try{DB=JSON.parse(raw);}catch(e){DB=blankDB();}
+      try{DB=reviveDB(JSON.parse(raw));}catch(e){DB=blankDB();}
     }else{
       // try v3 (id-based, single-track) then v2 (name-based)
       var v3=null,v2=null;
@@ -218,7 +221,37 @@
       if(s.courts==null)s.courts=3;
     });
   }
-  function saveDB(){try{DB._savedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}}
+  function saveDB(){try{DB._savedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(serializeDB(DB)));}catch(e){}}
+  // sitouts lives as a property on the courts ARRAY, which JSON.stringify drops.
+  // serializeDB copies it into a real key (_sit) on the array's container so it survives;
+  // reviveDB restores courts.sitouts after parse. Applied on every save/load and transfer.
+  function serializeDB(db){
+    var copy=JSON.parse(JSON.stringify(db)); // base clone (loses sitouts)
+    db.tracks.forEach(function(t,ti){
+      collectSit(t.current,copy.tracks[ti].current);
+      (t.archive||[]).forEach(function(a,ai){ if(copy.tracks[ti].archive[ai]) collectSit(a,copy.tracks[ti].archive[ai]); });
+    });
+    return copy;
+  }
+  function collectSit(srcSess,dstSess){
+    if(!srcSess||!srcSess.rounds||!dstSess)return;
+    dstSess._sit=srcSess.rounds.map(function(courts){return (courts&&courts.sitouts)?courts.sitouts.slice():null;});
+  }
+  function reviveDB(db){
+    if(!db||!db.tracks)return db;
+    db.tracks.forEach(function(t){
+      reviveSit(t.current);
+      (t.archive||[]).forEach(reviveSit);
+    });
+    return db;
+  }
+  function reviveSit(sess){
+    if(!sess)return;
+    if(sess._sit&&sess.rounds){
+      sess._sit.forEach(function(arr,i){ if(arr&&sess.rounds[i])sess.rounds[i].sitouts=arr; });
+      delete sess._sit;
+    }
+  }
   function curTrack(){for(var i=0;i<DB.tracks.length;i++)if(DB.tracks[i].id===DB.activeTrackId)return DB.tracks[i];return DB.tracks[0];}
   function S(){return curTrack().current;}
 
@@ -248,7 +281,7 @@
     return {tracks:tracks,sessions:sessions,players:(db.roster||[]).length};
   }
   function buildExportPayload(){
-    var snap=JSON.parse(JSON.stringify(DB));
+    var snap=serializeDB(DB);
     var when=Date.now();
     return {
       app:"pickleball-roundrobin",
@@ -277,9 +310,9 @@
   }
   function currentDataTimestamp(){return DB._savedAt||0;}
   function applyImport(payload){
-    // auto-backup what we're about to overwrite
-    try{localStorage.setItem(UNDO_KEY,JSON.stringify({savedAt:Date.now(),data:JSON.parse(JSON.stringify(DB))}));}catch(e){}
-    DB=payload.data;
+    // auto-backup what we're about to overwrite (serialize so its sitouts survive)
+    try{localStorage.setItem(UNDO_KEY,JSON.stringify({savedAt:Date.now(),data:serializeDB(DB)}));}catch(e){}
+    DB=reviveDB(payload.data); // incoming data may carry _sit from the sender; restore it
     // normalize through loadDB's guards by saving then reloading
     saveDB();loadDB();saveDB();
   }
@@ -289,8 +322,8 @@
       var raw=localStorage.getItem(UNDO_KEY);if(!raw)return false;
       var u=JSON.parse(raw);if(!u||!u.data)return false;
       // before undoing, stash current as the new undo (so undo is itself undoable both ways)
-      var cur=JSON.parse(JSON.stringify(DB));
-      DB=u.data;saveDB();loadDB();
+      var cur=serializeDB(DB);
+      DB=reviveDB(u.data);saveDB();loadDB();
       localStorage.setItem(UNDO_KEY,JSON.stringify({savedAt:Date.now(),data:cur}));
       saveDB();
       return true;
@@ -349,6 +382,9 @@
     clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove("show");},1800);}
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function rosterFind(id){for(var i=0;i<DB.roster.length;i++)if(DB.roster[i].id===id)return DB.roster[i];return null;}
+  function ratingOf(id){var r=rosterFind(id);return r&&r.rating!=null?r.rating:null;}
+  function fmtRating(v){return (v==null||v==="")?"":(Math.round(parseFloat(v)*100)/100);}
+  function parseRating(str){if(str==null)return null;str=String(str).trim();if(str==="")return null;var v=parseFloat(str);if(isNaN(v)||v<0||v>10)return null;return Math.round(v*100)/100;}
   function nameOf(id){
     var r=rosterFind(id);if(r)return r.name;
     // fall back to carried names if a player isn't in roster anymore
@@ -726,7 +762,8 @@
       DB.roster.forEach(function(r){
         var inS=s.players.indexOf(r.id)>=0;
         var chip=document.createElement("div");chip.className="chip"+(inS?" on":"");
-        chip.innerHTML=esc(r.name)+(inS?' <span class="x">✓</span>':'');
+        var rb=r.rating!=null?' <span class="chiprate">'+fmtRating(r.rating)+'</span>':'';
+        chip.innerHTML=esc(r.name)+rb+(inS?' <span class="x">✓</span>':'');
         chip.onclick=function(){
           if(inS)s.players=s.players.filter(function(id){return id!==r.id;});
           else s.players.push(r.id);
@@ -743,9 +780,24 @@
 
     var nm=document.createElement("div");nm.className="card";
     nm.innerHTML='<p class="lbl">Players this session ('+s.players.length+')</p>';
-    s.players.forEach(function(id,i){
+    var anyRated=s.players.some(function(id){return ratingOf(id)!=null;});
+    if(anyRated&&s.players.length>1){
+      if(!window._sessPlayerSort)window._sessPlayerSort="order";
+      var vseg=document.createElement("div");vseg.className="gtype";vseg.style.marginBottom="8px";
+      vseg.innerHTML='<button id="sp_o" class="'+(window._sessPlayerSort==="order"?"on":"")+'">In order</button><button id="sp_r" class="'+(window._sessPlayerSort==="rating"?"on":"")+'">By rating</button>';
+      nm.appendChild(vseg);
+      vseg.querySelector("#sp_o").onclick=function(){window._sessPlayerSort="order";render();};
+      vseg.querySelector("#sp_r").onclick=function(){window._sessPlayerSort="rating";render();};
+    }
+    var displayPlayers=s.players.map(function(id,i){return {id:id,origIdx:i};});
+    if(anyRated&&window._sessPlayerSort==="rating"){
+      displayPlayers.sort(function(a,b){var ra=ratingOf(a.id),rb=ratingOf(b.id);ra=ra==null?-1:ra;rb=rb==null?-1:rb;return rb-ra||nameOf(a.id).localeCompare(nameOf(b.id));});
+    }
+    displayPlayers.forEach(function(pp){
+      var id=pp.id,i=pp.origIdx;
       var row=document.createElement("div");row.className="pname-row";
-      row.innerHTML='<span class="pnum">'+(i+1)+'</span><span style="flex:1;font-size:15px">'+esc(nameOf(id))+'</span><button class="del">✕</button>';
+      var rb=ratingOf(id)!=null?'<span class="ratingbadge">'+fmtRating(ratingOf(id))+'</span>':'';
+      row.innerHTML='<span class="pnum">'+(window._sessPlayerSort==="rating"?"•":(i+1))+'</span><span style="flex:1;font-size:15px">'+esc(nameOf(id))+'</span>'+rb+'<button class="del">✕</button>';
       nm.appendChild(row);
       row.querySelector(".del").onclick=function(){s.players.splice(i,1);saveDB();render();};
     });
@@ -769,23 +821,41 @@
   function editRoster(){
     var host=document.getElementById("view");host.innerHTML="";
     var back=document.createElement("button");back.className="btn";back.style.marginBottom="10px";back.textContent="‹ Back";back.onclick=render;host.appendChild(back);
+    // sort toggle
+    if(!window._rosterSort)window._rosterSort="name";
+    var seg=document.createElement("div");seg.className="gtype";seg.style.marginBottom="10px";
+    seg.innerHTML='<button id="rs_n" class="'+(window._rosterSort==="name"?"on":"")+'">Sort by name</button><button id="rs_r" class="'+(window._rosterSort==="rating"?"on":"")+'">Sort by rating</button>';
+    host.appendChild(seg);
+    seg.querySelector("#rs_n").onclick=function(){window._rosterSort="name";editRoster();};
+    seg.querySelector("#rs_r").onclick=function(){window._rosterSort="rating";editRoster();};
+
+    var list=DB.roster.slice();
+    if(window._rosterSort==="rating")list.sort(function(a,b){var ra=a.rating==null?-1:a.rating,rb=b.rating==null?-1:b.rating;return rb-ra||a.name.localeCompare(b.name);});
+    else list.sort(function(a,b){return a.name.localeCompare(b.name);});
+
     var c=document.createElement("div");c.className="card";c.innerHTML='<p class="lbl">Saved players</p>';
     if(!DB.roster.length)c.innerHTML+='<p class="empty">No saved players yet.</p>';
-    DB.roster.forEach(function(r,i){
+    list.forEach(function(r){
       var row=document.createElement("div");row.className="pname-row";
-      row.innerHTML='<span style="flex:1;font-size:15px">'+esc(r.name)+'</span><button class="edit">rename</button><button class="del" style="font-size:13px">remove</button>';
+      var rtxt=r.rating!=null?'<span class="ratingbadge">'+fmtRating(r.rating)+'</span>':'<span class="ratingbadge none">—</span>';
+      row.innerHTML='<span style="flex:1;font-size:15px">'+esc(r.name)+'</span>'+rtxt+'<button class="edit">edit</button><button class="del" style="font-size:13px">remove</button>';
       row.querySelector(".edit").onclick=function(){
-        var nv=prompt("Rename player:",r.name);
-        if(nv&&nv.trim()){var dup=DB.roster.filter(function(x){return x.id!==r.id&&x.name.toLowerCase()===nv.trim().toLowerCase();})[0];
-          if(dup){alert("Another player already has that name.");return;}
-          r.name=nv.trim();DB.roster.sort(function(a,b){return a.name.localeCompare(b.name);});saveDB();editRoster();}
+        var nv=prompt("Player name:",r.name);
+        if(nv===null)return;
+        nv=nv.trim();if(!nv){alert("Name can't be blank.");return;}
+        var dup=DB.roster.filter(function(x){return x.id!==r.id&&x.name.toLowerCase()===nv.toLowerCase();})[0];
+        if(dup){alert("Another player already has that name.");return;}
+        var rv=prompt("Rating for "+nv+" (e.g. 3.5). Leave blank for none:",r.rating!=null?fmtRating(r.rating):"");
+        if(rv!==null){var parsed=parseRating(rv);if(rv.trim()!==""&&parsed===null){alert("Rating must be a number from 0 to 10 (e.g. 3.5). Keeping previous.");}else{r.rating=parsed;}}
+        r.name=nv;DB.roster.sort(function(a,b){return a.name.localeCompare(b.name);});saveDB();editRoster();
       };
       row.querySelector(".del").onclick=function(){
-        if(confirm('Remove "'+r.name+'" from saved players? Their past results stay in standings.')){DB.roster.splice(i,1);saveDB();editRoster();}
+        if(confirm('Remove "'+r.name+'" from saved players? Their past results stay in standings.')){var idx=DB.roster.findIndex(function(x){return x.id===r.id;});if(idx>=0)DB.roster.splice(idx,1);saveDB();editRoster();}
       };
       c.appendChild(row);
     });
     host.appendChild(c);
+    host.appendChild(footEl("Ratings are optional (pickleball-style, e.g. 3.5). Use “Sort by rating” to see players grouped by level."));
     var done=document.createElement("button");done.className="btn primary";done.textContent="Done";done.onclick=render;host.appendChild(done);
   }
 
@@ -794,7 +864,23 @@
     var st=standings(s);
     return {date:s.date,location:s.location,winBonus:s.winBonus,
       results:st.map(function(p){return {id:p.id,name:nameOf(p.id),pts:p.pts,scored:p.scored,against:p.against,bonus:p.bonus,w:p.w,l:p.l,gp:p.gp,possible:p.possible,pct:p.pct,pctPoss:p.pctPoss,ppg:Math.round(p.ppg*10)/10,wsum:p.wsum,weighted:p.weighted,rankPct:p.rankPct};}),
-      h2hText:h2hExportText(s),h2h:headToHead(s),savedAt:Date.now()};
+      h2hText:h2hExportText(s),h2h:headToHead(s),savedAt:Date.now(),
+      // editable source so scores can be corrected later (v1.9+)
+      src:{date:s.date,location:s.location,courts:s.courts,scoreTo:s.scoreTo,winBonus:s.winBonus,nrounds:s.nrounds,players:s.players.slice(),
+        rounds:JSON.parse(JSON.stringify(s.rounds)),
+        sit:s.rounds.map(function(c){return c.sitouts?c.sitouts.slice():null;}),
+        carryFrom:s.carryFrom||null}};
+  }
+  // rebuild a live-style session object from an archived snapshot's src (for editing)
+  function sessionFromArchiveSrc(src){
+    var sess=blankSession();
+    sess.date=src.date;sess.location=src.location||"";sess.courts=src.courts||1;sess.scoreTo=src.scoreTo||11;
+    sess.winBonus=src.winBonus==null?2:src.winBonus;sess.nrounds=src.nrounds||0;sess.players=(src.players||[]).slice();
+    sess.rounds=JSON.parse(JSON.stringify(src.rounds||[]));
+    if(src.sit)src.sit.forEach(function(arr,i){if(arr&&sess.rounds[i])sess.rounds[i].sitouts=arr;});
+    sess.carryFrom=src.carryFrom||null;
+    sess.rotState=recomputeRotState(sess.rounds);
+    return sess;
   }
   // Clear the CURRENT session of the active track: archive it first (if it has scores),
   // then wipe current scores/rounds so a fresh session can start. History + roster + locked target kept.
@@ -899,14 +985,28 @@
 
     // "bring someone in" panel — only when a slot is selected
     if(swapOn && s._swapSel){
-      var inRound=idsInRound();
-      var avail=DB.roster.filter(function(r){return !inRound[r.id];});
+      var selId=getId(s._swapSel);
+      // who is currently PLAYING on a court (these are the only ones not offered, except the selected slot itself)
+      var playingSet={};
+      courts.forEach(function(ct){ct.t1.forEach(function(x){if(x)playingSet[x]=1;});ct.t2.forEach(function(x){if(x)playingSet[x]=1;});});
+      var benchSet={};(courts.sitouts||[]).forEach(function(x){if(x)benchSet[x]=1;});
+      // available = everyone in roster except those currently playing (benchers ARE offered, marked "sitting out");
+      // also exclude the currently-selected occupant (no point picking themselves)
+      var avail=DB.roster.filter(function(r){
+        if(r.id===selId)return false;
+        if(playingSet[r.id])return false; // already on a court this round
+        return true;
+      });
       var panel=document.createElement("div");panel.className="card";panel.style.padding="10px 12px";
-      panel.innerHTML='<p class="lbl" style="margin-bottom:8px">Bring someone into '+esc(getId(s._swapSel)?nameOf(getId(s._swapSel))+"\u2019s spot":"the selected spot")+'</p>';
+      panel.innerHTML='<p class="lbl" style="margin-bottom:8px">Bring someone into '+esc(selId?nameOf(selId)+"\u2019s spot":"the selected spot")+'</p>';
       var selrow=document.createElement("div");selrow.className="row";
       var sel=document.createElement("select");sel.style.flex="1";sel.style.background="var(--surface2)";sel.style.border="1px solid var(--line)";sel.style.borderRadius="8px";sel.style.padding="8px";sel.style.color="var(--text)";sel.style.fontSize="14px";
-      var none=document.createElement("option");none.value="";none.textContent=avail.length?"— pick a player —":"(everyone is already in this round)";sel.appendChild(none);
-      avail.forEach(function(r){var o=document.createElement("option");o.value=r.id;o.textContent=r.name;sel.appendChild(o);});
+      var none=document.createElement("option");none.value="";none.textContent=avail.length?"— pick a player —":"(everyone else is already playing)";sel.appendChild(none);
+      // list benched players first (most likely target), then the rest
+      var benched=avail.filter(function(r){return benchSet[r.id];});
+      var others=avail.filter(function(r){return !benchSet[r.id];});
+      benched.forEach(function(r){var o=document.createElement("option");o.value=r.id;o.textContent=r.name+" (sitting out)";sel.appendChild(o);});
+      others.forEach(function(r){var o=document.createElement("option");o.value=r.id;o.textContent=r.name;sel.appendChild(o);});
       selrow.appendChild(sel);
       var bringBtn=document.createElement("button");bringBtn.className="iconbtn";bringBtn.style.width="auto";bringBtn.style.padding="0 14px";bringBtn.style.fontSize="13px";bringBtn.textContent="Bring in";
       bringBtn.onclick=function(){if(sel.value)bringIn(s._swapSel,sel.value);};
@@ -1611,10 +1711,13 @@
     tr.archive.forEach(function(a,i){
       var winner=a.results&&a.results.length?a.results[0].name:"—";
       var row=document.createElement("div");row.className="sesitem";
+      var canEdit=!!(a.src&&a.src.rounds);
       row.innerHTML='<div class="meta"><div class="d">'+esc(a.date||"")+(a.location?" · "+esc(a.location):"")+'</div><div class="s">'+a.results.length+' players · winner: '+esc(winner)+'</div></div>'+
+        (canEdit?'<button class="iconbtn editbtn" style="width:auto;padding:0 10px;font-size:12px">Edit</button>':'')+
         '<button class="iconbtn rankbtn" style="width:auto;padding:0 10px;font-size:12px">Rank</button>'+
         '<button class="iconbtn h2hbtn" style="width:auto;padding:0 10px;font-size:12px">H2H</button>'+
         '<button class="iconbtn delbtn" style="width:auto;padding:0 10px;font-size:14px;color:var(--danger)" title="Delete this session">✕</button>';
+      if(canEdit)row.querySelector(".editbtn").onclick=function(){editArchivedSession(i);};
       row.querySelector(".delbtn").onclick=function(){
         if(confirm("Delete this saved session? This can't be undone.")){tr.archive.splice(i,1);saveDB();render();}
       };
@@ -1633,6 +1736,53 @@
     var clr=document.createElement("button");clr.className="btn ghost";clr.textContent="Clear this track's history";
     clr.onclick=function(){if(confirm("Delete all saved sessions for this track? This can't be undone.")){tr.archive=[];saveDB();render();}};
     host.appendChild(clr);
+  }
+
+  function editArchivedSession(archiveIdx){
+    var tr=curTrack();var a=tr.archive[archiveIdx];
+    if(!a||!a.src||!a.src.rounds){alert("This saved session was created by an older version and can't be edited.");return;}
+    var sess=sessionFromArchiveSrc(a.src);
+    var host=document.getElementById("view");host.innerHTML="";
+    var back=document.createElement("button");back.className="btn";back.style.marginBottom="10px";back.textContent="‹ Back to History (discard changes)";
+    back.onclick=function(){view="hist";render();};host.appendChild(back);
+    host.appendChild(noteEl("info","Editing the saved session from "+esc(a.date||"this date")+". Fix any scores, then Save changes. This updates only this saved session — your current live session isn\u2019t affected."));
+
+    sess.rounds.forEach(function(courts,ri){
+      var rc=document.createElement("div");rc.className="card";
+      rc.innerHTML='<p class="lbl">Round '+(ri+1)+'</p>';
+      courts.forEach(function(g,ci){
+        var box=document.createElement("div");box.className="courtcard";box.style.marginBottom="6px";
+        if(courts.length>1){var tag=document.createElement("p");tag.className="courttag";tag.textContent="Court "+(ci+1);box.appendChild(tag);}
+        var t1n=g.t1.map(nameOf).join(" & "),t2n=g.t2.map(nameOf).join(" & ");
+        var r1=document.createElement("div");r1.className="teamrow t1";
+        r1.innerHTML='<span class="nm">'+esc(t1n)+'</span>';
+        var i1=document.createElement("input");i1.className="score";i1.type="number";i1.setAttribute("inputmode","numeric");i1.value=(g.s1==null?"":g.s1);i1.placeholder="–";
+        r1.appendChild(i1);
+        var vs=document.createElement("div");vs.className="vs";vs.textContent="vs";
+        var r2=document.createElement("div");r2.className="teamrow t2";
+        r2.innerHTML='<span class="nm">'+esc(t2n)+'</span>';
+        var i2=document.createElement("input");i2.className="score";i2.type="number";i2.setAttribute("inputmode","numeric");i2.value=(g.s2==null?"":g.s2);i2.placeholder="–";
+        r2.appendChild(i2);
+        box.appendChild(r1);box.appendChild(vs);box.appendChild(r2);
+        rc.appendChild(box);
+        i1.addEventListener("input",function(){var v=i1.value===""?null:parseInt(i1.value);g.s1=isNaN(v)?null:v;});
+        i2.addEventListener("input",function(){var v=i2.value===""?null:parseInt(i2.value);g.s2=isNaN(v)?null:v;});
+      });
+      if(courts.sitouts&&courts.sitouts.length){var so=document.createElement("p");so.className="sitout";so.textContent="Sitting out: "+courts.sitouts.map(nameOf).join(", ");rc.appendChild(so);}
+      host.appendChild(rc);
+    });
+
+    var saveBtn=document.createElement("button");saveBtn.className="btn primary";saveBtn.textContent="Save changes";
+    saveBtn.onclick=function(){
+      // re-snapshot from the edited session, preserving original savedAt/date
+      var newSnap=snapshot(sess);
+      newSnap.savedAt=a.savedAt||Date.now();
+      tr.archive[archiveIdx]=newSnap;
+      saveDB();view="hist";render();
+      alert("Saved. The session\u2019s scores and standings have been updated.");
+    };
+    host.appendChild(saveBtn);
+    var cancel=document.createElement("button");cancel.className="btn ghost";cancel.textContent="Cancel";cancel.onclick=function(){view="hist";render();};host.appendChild(cancel);
   }
 
   function renderTransfer(host){
