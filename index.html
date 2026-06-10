@@ -107,10 +107,14 @@
   .leadbanner .lbname{font-size:22px;font-weight:700;margin:2px 0;}
   .leadbanner .lbsub{font-size:12px;opacity:.9;}
   .priorbanner{background:var(--surface2);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:13px;}
+  .archbanner{background:var(--surface2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:0;}
   .priorbanner .pbk{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.05em;}
   .priorbanner .pbv{font-weight:600;color:var(--text);}
   .priorbanner .pbd{color:var(--dim);font-size:12px;}
   .statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 6px;}
+  .statgrid.g4{grid-template-columns:1fr 1fr 1fr 1fr;margin-top:8px;}
+  .statgrid.g4 .st{padding:6px 5px;}
+  .statgrid.g4 .st .k{font-size:9px;}
   .statgrid .st{background:var(--surface2);border-radius:8px;padding:6px 8px;}
   .statgrid .st .v{font-size:15px;font-weight:600;}
   .statgrid .st .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin-top:1px;}
@@ -1484,8 +1488,20 @@
   function renderRank(host){
     var s=S();var tr=curTrack();
     if(!window._rankMode)window._rankMode="session";
-    // scope toggle: this session | this track (all sessions) | all tracks
+    // archived: viewing a specific saved session's rankings (from History → Rank)
+    var archived=(window._rankMode==="archived");
+    var archSnap=archived?((tr.archive||[])[window._rankArchIdx]):null;
+    if(archived&&!archSnap){window._rankMode="session";archived=false;}
+    if(archived){
+      var bb=document.createElement("div");bb.className="archbanner";
+      bb.innerHTML='<span>Saved session · '+esc(archSnap.date||"")+(archSnap.location?" · "+esc(archSnap.location):"")+'</span>';
+      var bk=document.createElement("button");bk.className="btn";bk.style.marginTop="8px";bk.textContent="‹ Back to History";
+      bk.onclick=function(){window._rankMode="session";view="hist";render();};
+      var host0=host;host0.appendChild(bb);host0.appendChild(bk);
+    }
+    // scope toggle: this session | this track (all sessions) | all tracks  (hidden in archived view)
     var multiTrack=DB.tracks.length>1;
+    if(!archived){
     var seg=document.createElement("div");seg.className="gtype";seg.style.marginBottom="12px";
     seg.innerHTML='<button id="rm_s" class="'+(window._rankMode==="session"?"on":"")+'">This session</button>'+
       '<button id="rm_t" class="'+(window._rankMode==="track"?"on":"")+'">This track</button>'+
@@ -1495,10 +1511,11 @@
     seg.querySelector("#rm_t").onclick=function(){window._rankMode="track";render();};
     if(multiTrack)seg.querySelector("#rm_a").onclick=function(){window._rankMode="all";render();};
     if(window._rankMode==="all"&&!multiTrack)window._rankMode="track";
+    }
 
     var mode=window._rankMode;
     var combined=(mode==="all");
-    var r=combined?combinedStandings():(mode==="track"?trackCumulativeStandings(tr):standings(s));
+    var r=archived?archSnap.results.slice():(combined?combinedStandings():(mode==="track"?trackCumulativeStandings(tr):standings(s)));
     var hasAny=r.some(function(p){return p.gp>0;})||(mode==="session"&&s.carryFrom);
 
     // --- sort control ---
@@ -1557,6 +1574,8 @@
         var against=(p.against!=null?p.against:0);
         var diff=scored-against;
         var diffStr=(diff>0?"+":"")+diff;
+        var dpg=p.gp>0?(diff/p.gp):0;
+        var dpgStr=(dpg>0?"+":"")+(Math.round(dpg*10)/10);
         var numer=scored+bonus;
         card.innerHTML='<div class="phead"><div class="prk">'+(i===0?"🏆":(i+1))+'</div>'+
           '<div class="pname">'+esc(combined?combinedName(p):nameOf(p.id))+'</div>'+
@@ -1565,9 +1584,12 @@
             '<div class="st"><div class="v">'+p.gp+'</div><div class="k">Games</div></div>'+
             '<div class="st"><div class="v">'+p.w+'–'+p.l+'</div><div class="k">W–L</div></div>'+
             '<div class="st"><div class="v">'+bonus+'</div><div class="k">Win bonus</div></div>'+
+          '</div>'+
+          '<div class="statgrid g4">'+
             '<div class="st"><div class="v">'+scored+'</div><div class="k">Tot pts scored</div></div>'+
             '<div class="st"><div class="v">'+(Math.round(p.ppg*10)/10)+'</div><div class="k">Pts/game</div></div>'+
             '<div class="st"><div class="v'+(diff>0?" pos":(diff<0?" neg":""))+'">'+diffStr+'</div><div class="k">Differential</div></div>'+
+            '<div class="st"><div class="v'+(dpg>0?" pos":(dpg<0?" neg":""))+'">'+dpgStr+'</div><div class="k">Diff/game</div></div>'+
           '</div>'+
           '<div class="eqrow">'+
             '<div class="eqcell"><div class="ev">'+numer+'</div><div class="ek">Pts scored + bonus</div></div>'+
@@ -1579,21 +1601,29 @@
           '<div class="tapnote">tap for head-to-head ▾</div>';
         var pid=p.id, pdisplay=combined?combinedName(p):nameOf(p.id);
         card.onclick=(function(theId,theName,isCombined){return function(){
+          if(archived){window._h2hArchIdx=window._rankArchIdx;openH2H(theId,theName,"archived");return;}
           if(isCombined)window._h2hMode="alltracks";
           openH2H(theId,theName);
         };})(pid,pdisplay,combined);
         host.appendChild(card);
       });
-      host.appendChild(footEl("Score (the ranking) = (points scored + win bonus) ÷ points possible, shown as a %. It can top 100% because of win bonuses and overtime, and it's fair across different game counts. Pts possible = games × game target ("+ (s.scoreTo||11) +"). Differential = points scored − points against. Tap any player for head-to-head."));
+      host.appendChild(footEl("Score (the ranking) = (points scored + win bonus) ÷ points possible, shown as a %. It can top 100% because of win bonuses and overtime, and it's fair across different game counts. Differential = points scored − points against. Tap any player for head-to-head."));
     }
-    // ---- Game history download ----
+    // ---- Game history download + copy ----
     var recapLbl=document.createElement("p");recapLbl.className="lbl";recapLbl.style.marginTop="14px";recapLbl.textContent="Game history";
     host.appendChild(recapLbl);
-    var sumScope=combined?"all":(mode==="track"?"track":"session");
+    var sumScope=archived?"archived":(combined?"all":(mode==="track"?"track":"session"));
+    var ghName=archived?("pickleball-games-"+safeName(tr.name)+"-"+(archSnap.date||"")+".csv"):gameHistoryFilename(sumScope);
+    var ghRows=function(){return archived?gameHistoryRows("archived",window._rankArchIdx):gameHistoryRows(sumScope);};
     var ghBtn=document.createElement("button");ghBtn.className="btn";
-    ghBtn.textContent=combined?"⬇ Download game history (all tracks)":(mode==="track"?"⬇ Download game history (this track)":"⬇ Download game history (this session)");
-    ghBtn.onclick=function(){shareOrDownload(gameHistoryRows(sumScope),gameHistoryFilename(sumScope),host);};
+    ghBtn.textContent=archived?"⬇ Download game history (this session)":(combined?"⬇ Download game history (all tracks)":(mode==="track"?"⬇ Download game history (this track)":"⬇ Download game history (this session)"));
+    ghBtn.onclick=function(){shareOrDownload(ghRows(),ghName,host);};
     host.appendChild(ghBtn);
+    var ghCopy=document.createElement("button");ghCopy.className="btn";ghCopy.textContent="⧉ Copy game history";
+    ghCopy.onclick=function(){doCopy(tsv(ghRows()),host);};
+    host.appendChild(ghCopy);
+
+    if(archived)return; // archived view stops here — the rest is for live/cumulative scopes
 
     // ---- Share / download (CSV file, all-in-one: rankings + head-to-head) ----
     var shareLbl=document.createElement("p");shareLbl.className="lbl";shareLbl.style.marginTop="14px";shareLbl.textContent="Share / download (opens your phone\u2019s share menu, or saves a file)";
@@ -1656,18 +1686,28 @@
     return tsv(rows);
   }
 
-  function openH2H(id,dispName){
+  function openH2H(id,dispName,archMode){
     var host=document.getElementById("view");view="h2h";host.innerHTML="";
     if(!window._h2hMode)window._h2hMode="session";
+    var isArch=(archMode==="archived");
+    var archSnap=isArch?((curTrack().archive||[])[window._h2hArchIdx]):null;
+    if(isArch&&!archSnap){view="hist";render();return;}
+    window._h2hArch=isArch; // remember for back nav within toggles
     function showName(pid){var n=nameOf(pid);return (n&&n!=="(unknown)")?n:(dispName||n);}
-    var back=document.createElement("button");back.className="btn";back.style.marginBottom="10px";back.textContent="‹ Back to rankings";
-    back.onclick=function(){view="rank";render();};host.appendChild(back);
+    var back=document.createElement("button");back.className="btn";back.style.marginBottom="10px";
+    back.textContent=isArch?"‹ Back to this session\u2019s rankings":"‹ Back to rankings";
+    back.onclick=function(){ if(isArch){view="rank";render();} else {view="rank";render();} };host.appendChild(back);
     var c=document.createElement("div");c.className="card";
     c.innerHTML='<div class="phead" style="margin:0"><div class="pname" style="font-size:18px">'+esc(showName(id))+'</div></div>';
     host.appendChild(c);
 
-    // scope toggle. With >1 track: This session / All (this track) / All tracks.
     var multi=DB.tracks.length>1;
+    var H,scopeLabel;
+    if(isArch){
+      H=archSnap.h2h||{};
+      host.appendChild(noteEl("info","Saved session · "+(archSnap.date||"")+(archSnap.location?" · "+archSnap.location:"")));
+    }else{
+    // scope toggle. With >1 track: This session / All (this track) / All tracks.
     if(window._h2hMode!=="session"&&window._h2hMode!=="track"&&window._h2hMode!=="alltracks")window._h2hMode="session";
     if(window._h2hMode==="all")window._h2hMode="track"; // migrate old value
     var seg=document.createElement("div");seg.className="gtype";seg.style.marginBottom="10px";seg.style.flexWrap="wrap";
@@ -1679,7 +1719,6 @@
     seg.querySelector("#h_t").onclick=function(){window._h2hMode="track";openH2H(id,dispName);};
     if(multi)seg.querySelector("#h_a").onclick=function(){window._h2hMode="alltracks";openH2H(id,dispName);};
 
-    var H,scopeLabel;
     if(window._h2hMode==="alltracks"){
       H=cumulativeH2HAllTracks();scopeLabel="All sessions, all tracks";
       var gapsA=archivedH2HGaps(true);
@@ -1690,6 +1729,7 @@
       host.appendChild(noteEl("info",scopeLabel+(gapsT>0?". Note: "+gapsT+" older session"+(gapsT>1?"s":"")+" archived before this feature can\u2019t be included.":".")));
     }else{
       H=headToHead(S());scopeLabel="This session";
+    }
     }
     var rec=H[id]||{opp:{},par:{}};
 
@@ -1930,8 +1970,8 @@
       var canEdit=!!(a.src&&a.src.rounds);
       row.innerHTML='<div class="meta"><div class="d">'+esc(a.date||"")+(a.location?" · "+esc(a.location):"")+'</div><div class="s">'+a.results.length+' players · winner: '+esc(winner)+'</div></div>'+
         '<div class="sesbtns">'+
-        '<button class="iconbtn gamesbtn" style="width:auto;padding:0 10px;font-size:12px">Games</button>'+
-        (canEdit?'<button class="iconbtn editbtn" style="width:auto;padding:0 10px;font-size:12px">Edit</button>':'')+
+        '<button class="iconbtn gamesbtn" style="width:auto;padding:0 10px;font-size:12px">Games download</button>'+
+        (canEdit?'<button class="iconbtn editbtn" style="width:auto;padding:0 10px;font-size:12px">Games edit</button>':'')+
         '<button class="iconbtn rankbtn" style="width:auto;padding:0 10px;font-size:12px">Rank</button>'+
         '<button class="iconbtn h2hbtn" style="width:auto;padding:0 10px;font-size:12px">H2H</button>'+
         '<button class="iconbtn delbtn" style="width:auto;padding:0 10px;font-size:14px;color:var(--danger)" title="Delete this session">✕</button>'+
@@ -1945,14 +1985,14 @@
         if(confirm("Delete this saved session? This can't be undone.")){tr.archive.splice(i,1);saveDB();render();}
       };
       row.querySelector(".rankbtn").onclick=function(){
-        var rows=[["Date",a.date||""],["Location",a.location||""],[""],["Rank","Player","Total Points","Games","Wins","Losses","Pts Possible","Pts For","Pts Against","% of Pts","% of Possible","Pts/Game","Bonus Points"]];
-        a.results.forEach(function(p,idx){
-          var contested=(p.scored||0)+(p.against||0);
-          var pct=(p.against!=null&&contested>0)?Math.round(100*p.scored/contested)+"%":(p.pct!=null?p.pct+"%":"");
-          var pctP=(p.possible>0)?Math.round(100*(p.scored||0)/p.possible)+"%":(p.pct!=null?p.pct+"%":"");
-          rows.push([idx+1,p.name,p.pts,p.gp,p.w,(p.l!=null?p.l:""),(p.possible!=null?p.possible:""),(p.scored!=null?p.scored:""),(p.against!=null?p.against:""),pct,pctP,(p.ppg!=null?p.ppg:""),(p.bonus!=null?p.bonus:"")]);});
-        doCopy(tsv(rows),host);};
-      row.querySelector(".h2hbtn").onclick=function(){doCopy(a.h2hText||"(no head-to-head saved for this session)",host);};
+        window._rankMode="archived";window._rankArchIdx=i;window._rankSort="score";view="rank";render();
+      };
+      row.querySelector(".h2hbtn").onclick=function(){
+        var first=(a.results&&a.results[0])?a.results[0]:null;
+        if(!first){window._rankMode="archived";window._rankArchIdx=i;view="rank";render();return;}
+        window._h2hArchIdx=i;window._rankMode="archived";window._rankArchIdx=i;
+        openH2H(first.id,first.name,"archived");
+      };
       c.appendChild(row);
     });
     host.appendChild(c);
@@ -2123,7 +2163,7 @@
   }
 
   loadDB();
-  document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){view=t.dataset.v;render();});});
+  document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){if(window._rankMode==="archived")window._rankMode="session";view=t.dataset.v;render();});});
   (function(){var tl=document.querySelector(".trackslabel");if(tl)tl.appendChild(helpBtn("A track is one ongoing competition \u2014 a ladder, league, or rec group \u2014 with its own players and history. Tap a track to switch to it; tap the active one for rename/delete options; tap \u201C+\u201D to start a new one. See the Help tab for more."));})();
   render();
 })();
