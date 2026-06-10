@@ -169,7 +169,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">2.0</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">2.2</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -1522,13 +1522,22 @@
     if(!window._rankSort)window._rankSort="score";
     var sorts={
       score:{label:"Score %",fn:function(a,b){return b.rankPct-a.rankPct||b.pct-a.pct||b.gp-a.gp;}},
+      wins:{label:"W–L",fn:function(a,b){return b.w-a.w||(a.l-b.l)||b.gp-a.gp;}},
       pts:{label:"Total pts",fn:function(a,b){return b.pts-a.pts||b.w-a.w||b.gp-a.gp;}},
-      wins:{label:"Wins",fn:function(a,b){return b.w-a.w||(a.l-b.l)||b.gp-a.gp;}},
+      scored:{label:"Tot pts scored",fn:function(a,b){return (b.scored||0)-(a.scored||0)||b.gp-a.gp;}},
+      ppg:{label:"Pts/game",fn:function(a,b){return b.ppg-a.ppg||b.gp-a.gp;}},
+      diff:{label:"Differential",fn:function(a,b){return ((b.scored||0)-(b.against||0))-((a.scored||0)-(a.against||0))||b.gp-a.gp;}},
+      diffpg:{label:"Diff/game",fn:function(a,b){var da=a.gp>0?((a.scored||0)-(a.against||0))/a.gp:0,db=b.gp>0?((b.scored||0)-(b.against||0))/b.gp:0;return db-da||b.gp-a.gp;}},
+      bonus:{label:"Win bonus",fn:function(a,b){return (b.bonus||0)-(a.bonus||0)||b.w-a.w||b.gp-a.gp;}},
       pctpts:{label:"% of pts",fn:function(a,b){return b.pct-a.pct||b.gp-a.gp;}},
-      ppg:{label:"Pts/game",fn:function(a,b){return b.ppg-a.ppg||b.gp-a.gp;}}
+      games:{label:"Games",fn:function(a,b){return b.gp-a.gp||b.rankPct-a.rankPct;}}
     };
     if(!sorts[window._rankSort])window._rankSort="score";
     r=r.slice().sort(sorts[window._rankSort].fn);
+
+    // --- games-played filter (display only) ---
+    if(window._minGames==null)window._minGames=0;
+    var minG=window._minGames||0;
 
     // --- Ladder leader + prior session winner callouts (track scope) ---
     if(mode==="track"&&tr.type!=="free"){
@@ -1560,15 +1569,41 @@
       // sort chips
       var sortRow=document.createElement("div");sortRow.className="sortrow";
       var sl=document.createElement("span");sl.className="sortlbl";sl.textContent="Sort by";
-      sl.appendChild(helpBtn("Players are ranked by Score % by default: your points plus win bonuses, as a share of the points you could have scored \u2014 fair across different game counts. Tap another chip to rank by total points, wins, % of points, or points per game instead."));
+      sl.appendChild(helpBtn("Players are ranked by Score % by default: points plus win bonuses as a share of the points you could have scored \u2014 fair across different game counts. Tap any chip to rank by that stat instead. The chips match the numbers on each player\u2019s card."));
       sortRow.appendChild(sl);
-      ["score","pts","wins","pctpts","ppg"].forEach(function(key){
+      ["score","wins","pts","scored","ppg","diff","diffpg","bonus","pctpts","games"].forEach(function(key){
         var b=document.createElement("button");b.className="sortchip"+(window._rankSort===key?" on":"");b.textContent=sorts[key].label;
         b.onclick=function(){window._rankSort=key;render();};
         sortRow.appendChild(b);
       });
       host.appendChild(sortRow);
-      r.forEach(function(p,i){
+
+      // games-played filter chips (display only)
+      var filtRow=document.createElement("div");filtRow.className="sortrow";
+      var fl=document.createElement("span");fl.className="sortlbl";fl.textContent="Show";
+      fl.appendChild(helpBtn("Filters who appears on this list by games played \u2014 handy for ignoring people who only played once or twice. It only changes who\u2019s shown here; it never changes anyone\u2019s stats. \u201CCustom\u201D lets you type a number."));
+      filtRow.appendChild(fl);
+      var presets=[["All",0],["\u22653",3],["\u22655",5],["\u226510",10]];
+      presets.forEach(function(pr){
+        var b=document.createElement("button");b.className="sortchip"+((minG===pr[1]&&!window._customGames)?" on":"");b.textContent=pr[0];
+        b.onclick=function(){window._minGames=pr[1];window._customGames=false;render();};
+        filtRow.appendChild(b);
+      });
+      var cb=document.createElement("button");cb.className="sortchip"+(window._customGames?" on":"");
+      cb.textContent=window._customGames?("\u2265"+minG+" ✎"):"Custom";
+      cb.onclick=function(){
+        var v=prompt("Show only players with at least how many games?",String(minG||1));
+        if(v==null)return;var n=parseInt(v,10);
+        if(isNaN(n)||n<0){alert("Please enter a number (0 or more).");return;}
+        window._minGames=n;window._customGames=(n!==0&&n!==3&&n!==5&&n!==10);render();
+      };
+      filtRow.appendChild(cb);
+      host.appendChild(filtRow);
+      var shown=minG>0?r.filter(function(p){return p.gp>=minG;}):r;
+      if(!shown.length){
+        host.appendChild(noteEl("info","No players have "+minG+"+ games yet. Lower the \u201CShow\u201D filter to see more."));
+      }
+      shown.forEach(function(p,i){
         var card=document.createElement("div");card.className="pcard"+(i===0?" top":"");
         var scored=p.scored||0, bonus=(p.bonus!=null?p.bonus:0), poss=(p.possible!=null?p.possible:0);
         var against=(p.against!=null?p.against:0);
@@ -1738,7 +1773,13 @@
       var t=document.createElement("div");t.className="secttl";t.textContent=title;wrap.appendChild(t);
       var keys=Object.keys(data);
       if(!keys.length){var e=document.createElement("p");e.className="foot";e.style.textAlign="left";e.textContent=emptyMsg;wrap.appendChild(e);host.appendChild(wrap);return;}
-      keys.sort(function(a,b){var ra=data[a],rb=data[b];var ga=ra.w+ra.l,gb=rb.w+rb.l;var pa=ga?ra.w/ga:0,pb=gb?rb.w/gb:0;return pb-pa||gb-ga;});
+      keys.sort(function(a,b){
+        var ra=data[a],rb=data[b];
+        var ga=ra.w+ra.l,gb=rb.w+rb.l;
+        var pa=ga?ra.w/ga:0,pb=gb?rb.w/gb:0;
+        var da=ra.pf-ra.pa,db=rb.pf-rb.pa;
+        return (rb.w-ra.w)||(pb-pa)||(db-da)||(gb-ga);
+      });
       var card=document.createElement("div");card.className="card";card.style.padding="2px 12px";
       keys.forEach(function(o){var d=data[o];var totPts=d.pf+d.pa;var ptp=totPts?Math.round(100*d.pf/totPts):0;
         var cls=d.w>d.l?"good":(d.l>d.w?"bad":"");
@@ -2163,7 +2204,7 @@
   }
 
   loadDB();
-  document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){if(window._rankMode==="archived")window._rankMode="session";view=t.dataset.v;render();});});
+  document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){if(window._rankMode==="archived")window._rankMode="session";window._minGames=0;window._customGames=false;view=t.dataset.v;render();});});
   (function(){var tl=document.querySelector(".trackslabel");if(tl)tl.appendChild(helpBtn("A track is one ongoing competition \u2014 a ladder, league, or rec group \u2014 with its own players and history. Tap a track to switch to it; tap the active one for rename/delete options; tap \u201C+\u201D to start a new one. See the Help tab for more."));})();
   render();
 })();
