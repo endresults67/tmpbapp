@@ -28,7 +28,19 @@
   header h1{font-size:19px;margin:0;font-weight:600;letter-spacing:-.01em;}
   header .sub{font-size:12px;color:var(--dim);margin:0;}
   .tabs{display:flex;gap:4px;position:sticky;top:0;background:var(--bg);padding:8px 0 10px;z-index:50;}
-  .tab{flex:1;padding:11px 2px;text-align:center;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:.12s;}
+  .tab{flex:1;padding:11px 2px;text-align:center;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--muted);font-size:11.5px;font-weight:500;cursor:pointer;transition:.12s;}
+  .qmark{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:11px;font-weight:700;line-height:1;cursor:pointer;margin-left:5px;padding:0;vertical-align:middle;}
+  .qmark:hover{background:var(--accent);color:#fff;}
+  .lblwrap{display:inline-flex;align-items:center;}
+  .qpop{display:block;margin-top:6px;background:var(--surface2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:8px 10px;font-size:12.5px;line-height:1.45;color:var(--text);font-weight:400;}
+  .helprow{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .helprow:last-child{border-bottom:none;}
+  .helprow .helpk{flex:0 0 90px;font-weight:700;color:var(--accent);}
+  .helprow .helpv{flex:1;color:var(--text);}
+  .defrow{padding:9px 0;border-bottom:1px solid var(--line);}
+  .defrow:last-child{border-bottom:none;}
+  .defrow .deft{font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:2px;}
+  .defrow .defd{font-size:12.5px;line-height:1.5;color:var(--muted);}
   .tab.on{background:var(--accent);color:#ffffff;border-color:var(--accent);}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
   .field{display:flex;align-items:center;gap:10px;margin-bottom:11px;}
@@ -78,8 +90,9 @@
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--accent);color:#ffffff;padding:11px 20px;border-radius:24px;font-size:14px;font-weight:600;z-index:200;opacity:0;transition:.2s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2);}
   .toast.show{opacity:1;}
   .seslist{font-size:14px;}
-  .sesitem{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line);}
-  .sesitem .meta{flex:1;}.sesitem .meta .d{font-weight:600;}.sesitem .meta .s{font-size:12px;color:var(--dim);}
+  .sesitem{display:flex;align-items:center;gap:10px 8px;flex-wrap:wrap;padding:11px 4px;border-bottom:1px solid var(--line);}
+  .sesitem .meta{flex:1 1 100%;}.sesitem .meta .d{font-weight:600;}.sesitem .meta .s{font-size:12px;color:var(--dim);}
+  .sesitem .sesbtns{display:flex;flex-wrap:wrap;gap:6px;width:100%;}
   .pcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:.12s;}
   .pcard:active{transform:scale(.99);}
   .pcard.top{border-color:rgba(214,232,74,.4);}
@@ -101,6 +114,13 @@
   .statgrid .st{background:var(--surface2);border-radius:8px;padding:6px 8px;}
   .statgrid .st .v{font-size:15px;font-weight:600;}
   .statgrid .st .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin-top:1px;}
+  .statgrid .st .v.pos{color:var(--accent);}
+  .statgrid .st .v.neg{color:#c0392b;}
+  .eqrow{display:flex;align-items:center;justify-content:space-between;gap:4px;background:rgba(127,217,87,.12);border:1px solid rgba(127,217,87,.3);border-radius:10px;padding:9px 8px;margin-top:8px;}
+  .eqrow .eqcell{flex:1;text-align:center;}
+  .eqrow .eqcell .ev{font-size:16px;font-weight:700;color:var(--accent);}
+  .eqrow .eqcell .ek{font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:.03em;margin-top:1px;line-height:1.25;opacity:.85;}
+  .eqrow .eqop{font-size:17px;font-weight:700;color:var(--accent);flex:none;}
   .tapnote{font-size:10px;color:var(--dim);text-align:center;margin-top:8px;}
   .h2hsec .secttl{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px;}
   .h2hrow{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);font-size:14px;}
@@ -145,7 +165,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">v1.9</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">2.0</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -155,6 +175,7 @@
     <div class="tab" data-v="rank">Rankings</div>
     <div class="tab" data-v="hist">History</div>
     <div class="tab" data-v="xfer">Transfer</div>
+    <div class="tab" data-v="help">Help</div>
   </div>
   <div id="view"></div>
 </div>
@@ -652,7 +673,7 @@
       document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("on",t.dataset.v===tabFor);});
       var host=document.getElementById("view");host.innerHTML="";
       var second=tr.type==="free"?renderFree:renderGames;
-      ({setup:renderSetup,games:second,rank:renderRank,hist:renderHist,xfer:renderTransfer})[view](host);
+      ({setup:renderSetup,games:second,rank:renderRank,hist:renderHist,xfer:renderTransfer,help:renderHelp})[view](host);
     }catch(e){
       document.getElementById("view").innerHTML='<div class="card"><p class="empty">Redraw hiccup — tap another tab and back. ('+esc(e.message)+')</p></div>';
     }
@@ -688,8 +709,13 @@
     if(action==="rename"){
       var nv=prompt("New name:",t.name);if(nv&&nv.trim()){t.name=nv.trim();saveDB();render();}
     }else if(action==="delete"){
-      if(DB.tracks.length<=1){alert("Can't delete the only track.");return;}
-      if(confirm('Delete track "'+t.name+'" and all its sessions/history? Saved players are kept.')){
+      if(DB.tracks.length<=1){alert("This is your only track, so it can't be deleted — the app always needs at least one.");return;}
+      var n=(t.archive||[]).length;
+      if(n>0){
+        alert('"'+t.name+'" has '+n+' saved session'+(n>1?'s':'')+' in its History, so it can\u2019t be deleted — this protects your records.\n\nIf you really want to remove it, first open the History tab for this track and use "Clear this track\u2019s history," then delete the empty track.');
+        return;
+      }
+      if(confirm('Delete the empty track "'+t.name+'"? (It has no saved sessions.) Saved players are kept.')){
         DB.tracks=DB.tracks.filter(function(x){return x.id!==t.id;});
         DB.activeTrackId=DB.tracks[0].id;view="setup";saveDB();render();toast("Track deleted");
       }
@@ -697,6 +723,83 @@
   }
   function noteEl(kind,text){var d=document.createElement("div");d.className="note "+kind;d.textContent=text;return d;}
   function footEl(t){var p=document.createElement("p");p.className="foot";p.textContent=t;return p;}
+  // small inline "?" that reveals a one-line explanation
+  function helpBtn(text){
+    var b=document.createElement("button");b.className="qmark";b.type="button";b.textContent="?";b.setAttribute("aria-label","What is this?");
+    b.onclick=function(e){
+      e.stopPropagation();
+      var existing=b.parentNode.querySelector(".qpop");
+      if(existing){existing.parentNode.removeChild(existing);return;}
+      var pop=document.createElement("span");pop.className="qpop";pop.textContent=text;
+      b.parentNode.appendChild(pop);
+    };
+    return b;
+  }
+  // wrap a label string + help text into a small inline element
+  function labelWithHelp(labelText,helpText){
+    var span=document.createElement("span");span.className="lblwrap";
+    span.appendChild(document.createTextNode(labelText));
+    span.appendChild(helpBtn(helpText));
+    return span;
+  }
+
+  var HELP_TERMS=[
+    ["Track","A track is one ongoing competition \u2014 a ladder, league, or rec group. Each track keeps its own players, settings, and history, separate from your other tracks. Use the \u201C+\u201D at the top to start a new one."],
+    ["Session","One playing day within a track \u2014 a single round-robin you set up, play, and save. A track builds up a series of sessions over a season (week 1, week 2, and so on)."],
+    ["Round","Within a session, a round is one set of simultaneous games across your courts. Everyone plays (or sits out) once per round, then you make the next round."],
+    ["Rounds vs Games tab","On a rotation (ladder) track this tab is called \u201CRounds.\u201D On a rec / free-play track it\u2019s called \u201CGames.\u201D Same place \u2014 where you enter scores."],
+    ["Sitting out","When there are more players than court spots, some players sit out a round. The app rotates who sits so it\u2019s shared fairly. You can manually swap a sitter in when editing pairings."],
+    ["Score %","The main ranking number. It\u2019s your points scored (plus win bonuses) divided by the points you could have scored. It rewards how well you play rather than how many games you play, so it\u2019s fair when people play different numbers of games. It can go above 100% because of win bonuses and overtime."],
+    ["% of Pts","Your points as a share of all the points in your games \u2014 your points divided by (your points + your opponents\u2019 points). Always between 0 and 100%."],
+    ["Pts Possible","The most points you could have scored: your games played times the points-to-win target (for example, 5 games to 11 = 55)."],
+    ["Win bonus","Extra points added for winning a game, on top of the points scored. You set this when you set up a session (for example, 1 point per win). It rewards winning, not just scoring."],
+    ["Total pts","Your points scored plus your win bonuses, added up across all your games. This rewards playing more, so it\u2019s not the same as Score %."],
+    ["Pts/Game","Your average points scored per game \u2014 points scored divided by games played."],
+    ["Head-to-head","Your record against and alongside specific people: who you\u2019ve beaten, who\u2019s beaten you, and who you win with as partners. Tap any player on the Rankings tab to see theirs."],
+    ["This session / All sessions / All tracks","Three views you can switch between on rankings and head-to-head. \u201CThis session\u201D is today only. \u201CAll sessions\u201D combines every session in the current track. \u201CAll tracks\u201D combines everything, across all your tracks."],
+    ["Rating","An optional pickleball-style number (like 3.5) you can give each player, in \u201CEdit saved players.\u201D It\u2019s just for your reference \u2014 it doesn\u2019t change how games are made. You can sort players by rating to group by level."],
+    ["Transfer / Backup","Your data lives on this one device only \u2014 it isn\u2019t synced automatically. The Transfer tab lets you save a backup file and load it onto another phone or computer, so you can move everything or hand off to someone else."],
+    ["Edit (saved session)","On the History tab, sessions you saved with this version have an Edit button so you can fix a wrong score after saving. Your current live session isn\u2019t affected."],
+    ["Differential","On a player\u2019s ranking card: points scored minus points given up. A positive number (shown in green) means they won more points than they lost."],
+    ["The score equation","The bottom row of a player\u2019s ranking card spells out the math: (points scored + win bonus) \u00f7 points possible = score %. It\u2019s there so the headline score number explains itself."],
+    ["Game history (download)","Downloads the actual game-by-game results \u2014 every round, who played whom, and the scores \u2014 as a file you can open in a spreadsheet. Find it on the Rankings tab (this session / track / all tracks) and on each saved session in History. Sessions saved before this feature existed show standings only."],
+    ["Deleting a track","You can remove a track you don\u2019t need from the bar at the top: tap the active track, then choose delete. To protect your records, a track can only be deleted once it\u2019s empty \u2014 if it still has saved sessions, clear its history first."]
+  ];
+
+  function renderHelp(host){
+    var intro=document.createElement("div");intro.className="card";
+    intro.innerHTML='<p class="lbl">How this app works</p>'+
+      '<p style="font-size:13.5px;line-height:1.5;margin:4px 0;color:var(--text)">'+
+      'Pick who\u2019s playing on the <b>Setup</b> tab, then start. The app makes the matchups for you. '+
+      'Enter scores on the <b>Rounds</b> tab as you play. See standings on <b>Rankings</b> (tap a player for head-to-head). '+
+      'When you\u2019re done, save the day to <b>History</b>. Use <b>Transfer</b> to back up or move your data to another device.</p>';
+    host.appendChild(intro);
+
+    var quick=document.createElement("div");quick.className="card";
+    quick.innerHTML='<p class="lbl">The tabs at a glance</p>';
+    [["Setup","Choose players and settings, and start a session."],
+     ["Rounds / Games","See the matchups and type in scores."],
+     ["Rankings","Standings and head-to-head. Tap a player for detail; sort and filter by scope."],
+     ["History","Past sessions you\u2019ve saved. Edit a saved session\u2019s scores here if needed."],
+     ["Transfer","Save a backup, or move your data to/from another device."],
+     ["Help","This page."]].forEach(function(row){
+      var r=document.createElement("div");r.className="helprow";
+      r.innerHTML='<span class="helpk">'+esc(row[0])+'</span><span class="helpv">'+esc(row[1])+'</span>';
+      quick.appendChild(r);
+    });
+    host.appendChild(quick);
+
+    var defs=document.createElement("div");defs.className="card";
+    defs.innerHTML='<p class="lbl">Definitions</p>';
+    HELP_TERMS.forEach(function(t){
+      var d=document.createElement("div");d.className="defrow";
+      d.innerHTML='<div class="deft">'+esc(t[0])+'</div><div class="defd">'+esc(t[1])+'</div>';
+      defs.appendChild(d);
+    });
+    host.appendChild(defs);
+
+    host.appendChild(footEl("Tip: look for the small \u201C?\u201D buttons around the app \u2014 tap one for a quick explanation right where you need it."));
+  }
 
   function renderSetup(host){
     var s=S();var tr=curTrack();
@@ -751,6 +854,16 @@
       (targetLocked?'<p class="foot" style="margin:-4px 0 8px;text-align:left">Game target is locked at '+s.scoreTo+' for this ladder. Start a new ladder (the + above) to use a different target.</p>':'')+
       '<div class="field"><label>Win bonus (pts)</label><input type="number" class="num" id="f_bonus" value="'+s.winBonus+'"></div>';
     host.appendChild(cfg);
+    // attach inline help to the three field labels
+    (function(){
+      var labels=cfg.querySelectorAll(".field label");
+      var helps=[
+        "How many courts you have for play. The app fits games to this \u2014 extra players sit out and rotate in.",
+        "The score a game is played to (often 11, win by 2). This also sets each player\u2019s \u201Cpoints possible.\u201D",
+        "Extra points for winning a game, added on top of points scored (for example, 1 per win). Rewards winning, not just scoring. Set 0 for none."
+      ];
+      labels.forEach(function(lab,i){ if(helps[i])lab.appendChild(helpBtn(helps[i])); });
+    })();
     cfg.querySelector("#f_courts").onchange=function(e){s.courts=Math.max(1,parseInt(e.target.value)||1);saveDB();render();};
     if(!targetLocked)cfg.querySelector("#f_to").onchange=function(e){s.scoreTo=parseInt(e.target.value)||11;saveDB();};
     cfg.querySelector("#f_bonus").onchange=function(e){var v=parseInt(e.target.value);s.winBonus=isNaN(v)?2:v;saveDB();};
@@ -862,13 +975,22 @@
   // snapshot a finished session for History (store names + h2h text + structured h2h)
   function snapshot(s){
     var st=standings(s);
+    // defensively normalize rounds so a malformed shape can't break saving
+    var safeRounds=(s.rounds||[]).map(function(c){
+      var courts=Array.isArray(c)?c:[];
+      return courts.map(function(g){
+        g=g||{};
+        return {t1:Array.isArray(g.t1)?g.t1.slice():[],t2:Array.isArray(g.t2)?g.t2.slice():[],s1:(g.s1==null?null:g.s1),s2:(g.s2==null?null:g.s2)};
+      });
+    });
+    var safeSit=(s.rounds||[]).map(function(c){return (c&&c.sitouts)?c.sitouts.slice():null;});
     return {date:s.date,location:s.location,winBonus:s.winBonus,
       results:st.map(function(p){return {id:p.id,name:nameOf(p.id),pts:p.pts,scored:p.scored,against:p.against,bonus:p.bonus,w:p.w,l:p.l,gp:p.gp,possible:p.possible,pct:p.pct,pctPoss:p.pctPoss,ppg:Math.round(p.ppg*10)/10,wsum:p.wsum,weighted:p.weighted,rankPct:p.rankPct};}),
       h2hText:h2hExportText(s),h2h:headToHead(s),savedAt:Date.now(),
       // editable source so scores can be corrected later (v1.9+)
-      src:{date:s.date,location:s.location,courts:s.courts,scoreTo:s.scoreTo,winBonus:s.winBonus,nrounds:s.nrounds,players:s.players.slice(),
-        rounds:JSON.parse(JSON.stringify(s.rounds)),
-        sit:s.rounds.map(function(c){return c.sitouts?c.sitouts.slice():null;}),
+      src:{date:s.date,location:s.location,courts:s.courts,scoreTo:s.scoreTo,winBonus:s.winBonus,nrounds:s.nrounds,players:(s.players||[]).slice(),
+        rounds:safeRounds,
+        sit:safeSit,
         carryFrom:s.carryFrom||null}};
   }
   // rebuild a live-style session object from an archived snapshot's src (for editing)
@@ -918,13 +1040,19 @@
       return;
     }
     if(!confirm("End this session on the “"+tr.name+"” track?\n\nIt will be saved to History, and a fresh session will be ready for next time."))return;
-    tr.archive.unshift(snapshot(s));
-    var savedCount=tr.archive.length;
-    var keep=s.players.slice(),c=s.courts,to=s.scoreTo,wb=s.winBonus;
-    tr.current=blankSession();
-    tr.current.players=keep;tr.current.courts=c;tr.current.scoreTo=to;tr.current.winBonus=wb;
-    saveDB();view="hist";render();
-    alert("Saved to History.\n\n“"+tr.name+"” now has "+savedCount+" saved session"+(savedCount===1?"":"s")+". You're looking at the History tab for this track.");
+    try{
+      tr.archive.unshift(snapshot(s));
+      var savedCount=tr.archive.length;
+      var keep=s.players.slice(),c=s.courts,to=s.scoreTo,wb=s.winBonus;
+      tr.current=blankSession();
+      tr.current.players=keep;tr.current.courts=c;tr.current.scoreTo=to;tr.current.winBonus=wb;
+      saveDB();view="hist";render();
+      alert("Saved to History.\n\n“"+tr.name+"” now has "+savedCount+" saved session"+(savedCount===1?"":"s")+". You're looking at the History tab for this track.");
+    }catch(err){
+      // never fail silently — tell the user what happened
+      try{tr.archive.shift&&(tr.archive[0]&&tr.archive[0].savedAt&&Date.now()-tr.archive[0].savedAt<2000?tr.archive.shift():0);}catch(e){}
+      alert("Couldn't save this session — something in the data tripped it up.\n\n("+(err&&err.message?err.message:"unknown error")+")\n\nYour scores are still here, nothing was lost. Try again, and if it keeps happening, use Transfer to save a backup and let Mark know.");
+    }
   }
 
   function renderGames(host){
@@ -1414,7 +1542,9 @@
       else if(s.carryFrom)host.appendChild(noteEl("info","Standings include totals and head-to-head carried from the previous session."));
       // sort chips
       var sortRow=document.createElement("div");sortRow.className="sortrow";
-      sortRow.innerHTML='<span class="sortlbl">Sort by</span>';
+      var sl=document.createElement("span");sl.className="sortlbl";sl.textContent="Sort by";
+      sl.appendChild(helpBtn("Players are ranked by Score % by default: your points plus win bonuses, as a share of the points you could have scored \u2014 fair across different game counts. Tap another chip to rank by total points, wins, % of points, or points per game instead."));
+      sortRow.appendChild(sl);
       ["score","pts","wins","pctpts","ppg"].forEach(function(key){
         var b=document.createElement("button");b.className="sortchip"+(window._rankSort===key?" on":"");b.textContent=sorts[key].label;
         b.onclick=function(){window._rankSort=key;render();};
@@ -1423,20 +1553,30 @@
       host.appendChild(sortRow);
       r.forEach(function(p,i){
         var card=document.createElement("div");card.className="pcard"+(i===0?" top":"");
+        var scored=p.scored||0, bonus=(p.bonus!=null?p.bonus:0), poss=(p.possible!=null?p.possible:0);
+        var against=(p.against!=null?p.against:0);
+        var diff=scored-against;
+        var diffStr=(diff>0?"+":"")+diff;
+        var numer=scored+bonus;
         card.innerHTML='<div class="phead"><div class="prk">'+(i===0?"🏆":(i+1))+'</div>'+
           '<div class="pname">'+esc(combined?combinedName(p):nameOf(p.id))+'</div>'+
           '<div class="ptot">'+(p.rankPct!=null?p.rankPct:0)+'%<small>score</small></div></div>'+
           '<div class="statgrid">'+
             '<div class="st"><div class="v">'+p.gp+'</div><div class="k">Games</div></div>'+
             '<div class="st"><div class="v">'+p.w+'–'+p.l+'</div><div class="k">W–L</div></div>'+
-            '<div class="st"><div class="v">'+p.pts+'</div><div class="k">Total pts</div></div>'+
-            '<div class="st"><div class="v">'+(p.possible!=null?p.possible:0)+'</div><div class="k">Pts possible</div></div>'+
-            '<div class="st"><div class="v">'+p.scored+'</div><div class="k">Pts for</div></div>'+
-            '<div class="st"><div class="v">'+(p.against!=null?p.against:0)+'</div><div class="k">Pts against</div></div>'+
-            '<div class="st"><div class="v">'+(p.bonus!=null?p.bonus:0)+'</div><div class="k">Win bonus</div></div>'+
-            '<div class="st"><div class="v">'+p.pct+'%</div><div class="k">% of pts</div></div>'+
+            '<div class="st"><div class="v">'+bonus+'</div><div class="k">Win bonus</div></div>'+
+            '<div class="st"><div class="v">'+scored+'</div><div class="k">Tot pts scored</div></div>'+
             '<div class="st"><div class="v">'+(Math.round(p.ppg*10)/10)+'</div><div class="k">Pts/game</div></div>'+
-          '</div>'+'<div class="tapnote">tap for head-to-head ▾</div>';
+            '<div class="st"><div class="v'+(diff>0?" pos":(diff<0?" neg":""))+'">'+diffStr+'</div><div class="k">Differential</div></div>'+
+          '</div>'+
+          '<div class="eqrow">'+
+            '<div class="eqcell"><div class="ev">'+numer+'</div><div class="ek">Pts scored + bonus</div></div>'+
+            '<div class="eqop">÷</div>'+
+            '<div class="eqcell"><div class="ev">'+poss+'</div><div class="ek">Pts possible</div></div>'+
+            '<div class="eqop">=</div>'+
+            '<div class="eqcell"><div class="ev">'+(p.rankPct!=null?p.rankPct:0)+'%</div><div class="ek">Score</div></div>'+
+          '</div>'+
+          '<div class="tapnote">tap for head-to-head ▾</div>';
         var pid=p.id, pdisplay=combined?combinedName(p):nameOf(p.id);
         card.onclick=(function(theId,theName,isCombined){return function(){
           if(isCombined)window._h2hMode="alltracks";
@@ -1444,8 +1584,17 @@
         };})(pid,pdisplay,combined);
         host.appendChild(card);
       });
-      host.appendChild(footEl("Score (the ranking) = (points for + win bonus) ÷ points possible, as a %. Can top 100% because of win bonuses and overtime. It's fair across different game counts, so playing more games doesn't help by itself. Pts possible = games × game target ("+ (s.scoreTo||11) +"). Total pts = points for + "+(combined?"win bonus":(s.winBonus+"/win"))+". % of pts = your points ÷ all points in your games. Pts/game = points for ÷ games."));
+      host.appendChild(footEl("Score (the ranking) = (points scored + win bonus) ÷ points possible, shown as a %. It can top 100% because of win bonuses and overtime, and it's fair across different game counts. Pts possible = games × game target ("+ (s.scoreTo||11) +"). Differential = points scored − points against. Tap any player for head-to-head."));
     }
+    // ---- Game history download ----
+    var recapLbl=document.createElement("p");recapLbl.className="lbl";recapLbl.style.marginTop="14px";recapLbl.textContent="Game history";
+    host.appendChild(recapLbl);
+    var sumScope=combined?"all":(mode==="track"?"track":"session");
+    var ghBtn=document.createElement("button");ghBtn.className="btn";
+    ghBtn.textContent=combined?"⬇ Download game history (all tracks)":(mode==="track"?"⬇ Download game history (this track)":"⬇ Download game history (this session)");
+    ghBtn.onclick=function(){shareOrDownload(gameHistoryRows(sumScope),gameHistoryFilename(sumScope),host);};
+    host.appendChild(ghBtn);
+
     // ---- Share / download (CSV file, all-in-one: rankings + head-to-head) ----
     var shareLbl=document.createElement("p");shareLbl.className="lbl";shareLbl.style.marginTop="14px";shareLbl.textContent="Share / download (opens your phone\u2019s share menu, or saves a file)";
     host.appendChild(shareLbl);
@@ -1638,6 +1787,73 @@
     return rows;
   }
   function bundleTSV(scope){return tsv(bundleRows(scope));}
+  // Game-by-game history export. scope: "session" | "track" | "all".
+  // Uses stored src.rounds where available; notes summary-only for pre-1.9 sessions.
+  function gameHistoryRows(scope,archIdx){
+    var rows=[];
+    function emitSession(trackName,date,location,src,winBonus,scoreTo){
+      rows.push([""]);
+      rows.push(["SESSION",date||"",trackName||"",location||""]);
+      if(!src||!src.rounds){
+        rows.push(["(This session was saved by an older version — individual game scores weren\u2019t stored. Standings only.)"]);
+        return;
+      }
+      rows.push(["Round","Court","Team 1","Score","Score","Team 2","Result"]);
+      src.rounds.forEach(function(courts,ri){
+        var sit=(src.sit&&src.sit[ri])?src.sit[ri]:(courts.sitouts||null);
+        courts.forEach(function(g,ci){
+          if(!g||!g.t1||!g.t2)return;
+          var t1=g.t1.map(nameOf).filter(Boolean).join(" & ");
+          var t2=g.t2.map(nameOf).filter(Boolean).join(" & ");
+          var s1=(g.s1==null?"":g.s1), s2=(g.s2==null?"":g.s2);
+          var res="";
+          if(g.s1!=null&&g.s2!=null)res=(g.s1>g.s2?"Team 1":(g.s2>g.s1?"Team 2":"tie"))+" won";
+          rows.push([ri+1,ci+1,t1,s1,s2,t2,res]);
+        });
+        if(sit&&sit.length)rows.push(["","Sitting out",sit.map(nameOf).join(", ")]);
+      });
+    }
+    if(scope==="archived"){
+      var trA=curTrack();var a=(trA.archive||[])[archIdx];
+      rows.push(["PICKLEBALL GAME HISTORY — SAVED SESSION"]);
+      rows.push(["Track",trA.name]);
+      if(a)emitSession(trA.name,a.date,a.location,a.src,a.winBonus,a.src?a.src.scoreTo:null);
+      return rows;
+    }
+    if(scope==="session"){
+      var s=S(),tr=curTrack();
+      rows.push(["PICKLEBALL GAME HISTORY — THIS SESSION"]);
+      rows.push(["Track",tr.name]);
+      emitSession(tr.name,s.date,s.location,{rounds:s.rounds,sit:s.rounds.map(function(c){return c.sitouts||null;})},s.winBonus,s.scoreTo);
+    }else if(scope==="track"){
+      var tr2=curTrack();
+      rows.push(["PICKLEBALL GAME HISTORY — TRACK: "+tr2.name]);
+      rows.push(["Generated",new Date().toISOString().slice(0,10)]);
+      // current (if it has games) then archived
+      if(tr2.current&&tr2.current.rounds&&tr2.current.rounds.length&&anyScores(tr2.current))
+        emitSession(tr2.name,tr2.current.date+" (current, unsaved)",tr2.current.location,{rounds:tr2.current.rounds,sit:tr2.current.rounds.map(function(c){return c.sitouts||null;})},tr2.current.winBonus,tr2.current.scoreTo);
+      (tr2.archive||[]).forEach(function(a){emitSession(tr2.name,a.date,a.location,a.src,a.winBonus,a.src?a.src.scoreTo:null);});
+    }else{ // all
+      rows.push(["PICKLEBALL GAME HISTORY — ALL TRACKS"]);
+      rows.push(["Generated",new Date().toISOString().slice(0,10)]);
+      DB.tracks.forEach(function(tk){
+        rows.push([""]);rows.push(["TRACK",tk.name]);
+        if(tk.current&&tk.current.rounds&&tk.current.rounds.length&&anyScores(tk.current))
+          emitSession(tk.name,tk.current.date+" (current, unsaved)",tk.current.location,{rounds:tk.current.rounds,sit:tk.current.rounds.map(function(c){return c.sitouts||null;})},tk.current.winBonus,tk.current.scoreTo);
+        (tk.archive||[]).forEach(function(a){emitSession(tk.name,a.date,a.location,a.src,a.winBonus,a.src?a.src.scoreTo:null);});
+      });
+    }
+    return rows;
+  }
+  function gameHistoryFilename(scope){
+    var tr=curTrack();var s=S();
+    var date=(scope==="session"?(s.date||new Date().toISOString().slice(0,10)):new Date().toISOString().slice(0,10));
+    var who=scope==="all"?"all-tracks":safeName(tr.name);
+    return "pickleball-games-"+who+"-"+date+".csv";
+  }
+
+  // ---- positive-vibe summary -------------------------------------------------
+  // Generates upbeat, honest text from real stats. Everyone who played gets a line.
   function rowsToCSV(rows){
     return rows.map(function(r){return r.map(function(cell){
       var v=(cell==null?"":String(cell));
@@ -1713,10 +1929,17 @@
       var row=document.createElement("div");row.className="sesitem";
       var canEdit=!!(a.src&&a.src.rounds);
       row.innerHTML='<div class="meta"><div class="d">'+esc(a.date||"")+(a.location?" · "+esc(a.location):"")+'</div><div class="s">'+a.results.length+' players · winner: '+esc(winner)+'</div></div>'+
+        '<div class="sesbtns">'+
+        '<button class="iconbtn gamesbtn" style="width:auto;padding:0 10px;font-size:12px">Games</button>'+
         (canEdit?'<button class="iconbtn editbtn" style="width:auto;padding:0 10px;font-size:12px">Edit</button>':'')+
         '<button class="iconbtn rankbtn" style="width:auto;padding:0 10px;font-size:12px">Rank</button>'+
         '<button class="iconbtn h2hbtn" style="width:auto;padding:0 10px;font-size:12px">H2H</button>'+
-        '<button class="iconbtn delbtn" style="width:auto;padding:0 10px;font-size:14px;color:var(--danger)" title="Delete this session">✕</button>';
+        '<button class="iconbtn delbtn" style="width:auto;padding:0 10px;font-size:14px;color:var(--danger)" title="Delete this session">✕</button>'+
+        '</div>';
+      row.querySelector(".gamesbtn").onclick=function(){
+        var date=(a.date||new Date().toISOString().slice(0,10));
+        shareOrDownload(gameHistoryRows("archived",i),"pickleball-games-"+safeName(tr.name)+"-"+date+".csv",host);
+      };
       if(canEdit)row.querySelector(".editbtn").onclick=function(){editArchivedSession(i);};
       row.querySelector(".delbtn").onclick=function(){
         if(confirm("Delete this saved session? This can't be undone.")){tr.archive.splice(i,1);saveDB();render();}
@@ -1901,6 +2124,7 @@
 
   loadDB();
   document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){view=t.dataset.v;render();});});
+  (function(){var tl=document.querySelector(".trackslabel");if(tl)tl.appendChild(helpBtn("A track is one ongoing competition \u2014 a ladder, league, or rec group \u2014 with its own players and history. Tap a track to switch to it; tap the active one for rename/delete options; tap \u201C+\u201D to start a new one. See the Help tab for more."));})();
   render();
 })();
 </script>
