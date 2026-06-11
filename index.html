@@ -425,6 +425,7 @@
     return id;
   }
   function roundsToMeet(n){return Math.max(1,Math.ceil((n-1)/3));}
+  function roundsToPartnerAll(n){return Math.max(1,(n||4)-1);}
   function pkey(a,b){return a<b?a+"|"+b:b+"|"+a;}
 
   // ---------- pairing engine (repeat-avoiding, partner-variety first) ----------
@@ -751,6 +752,7 @@
     ["Track","A track is one ongoing competition \u2014 a ladder, league, or rec group. Each track keeps its own players, settings, and history, separate from your other tracks. Use the \u201C+\u201D at the top to start a new one."],
     ["Session","One playing day within a track \u2014 a single round-robin you set up, play, and save. A track builds up a series of sessions over a season (week 1, week 2, and so on)."],
     ["Round","Within a session, a round is one set of simultaneous games across your courts. Everyone plays (or sits out) once per round, then you make the next round."],
+    ["How partners & opponents are chosen","Each round, the app\u2019s first priority is partner variety \u2014 it pairs you with people you haven\u2019t partnered yet, so over a session you team up with as many different players as possible. After partners are set, it then tries to give you fresh opponents too. So if the two ever compete, partnering everyone comes first, facing everyone second."],
     ["Rounds vs Games tab","On a rotation (ladder) track this tab is called \u201CRounds.\u201D On a rec / free-play track it\u2019s called \u201CGames.\u201D Same place \u2014 where you enter scores."],
     ["Sitting out","When there are more players than court spots, some players sit out a round. The app rotates who sits so it\u2019s shared fairly. You can manually swap a sitter in when editing pairings."],
     ["Score %","The main ranking number. It\u2019s your points scored (plus win bonuses) divided by the points you could have scored. It rewards how well you play rather than how many games you play, so it\u2019s fair when people play different numbers of games. It can go above 100% because of win bonuses and overtime."],
@@ -1063,7 +1065,8 @@
     var s=S();
     var ids=s.players.slice();
     if(!s.rounds.length){
-      var need=roundsToMeet(ids.length||4);
+      var need=roundsToPartnerAll(ids.length||4);
+      var sitsOut=(function(){var seats=s.courts*4,pl=Math.min(ids.length,seats);pl-=pl%4;return Math.max(0,ids.length-pl)>0;})();
       if(!s.nrounds)s.nrounds=need;
       var setup=document.createElement("div");setup.className="card";
       setup.innerHTML='<p class="lbl">Create rounds</p>'+
@@ -1074,8 +1077,8 @@
       if(ids.length>=4){
         var seats=s.courts*4,playing=Math.min(ids.length,seats);playing-=playing%4;var sit=Math.max(0,ids.length-playing);
         if(sit>0)host.appendChild(noteEl("info",s.courts+" courts seat "+playing+" per round, so "+sit+" sit out each round (fewest-sat go first)."));
-        if(s.nrounds>=need)host.appendChild(noteEl("ok","✓ "+s.nrounds+" rounds should let everyone face everyone at least once (~"+need+" needed for "+ids.length+" players)."));
-        else host.appendChild(noteEl("warn","⚠ "+ids.length+" players need about "+need+" rounds for everyone to meet. At "+s.nrounds+", some pairings won't happen — fine for casual play."));
+        if(s.nrounds>=need)host.appendChild(noteEl("ok","✓ "+s.nrounds+" rounds lets everyone partner everyone "+(sit?"(when their turns line up around sit-outs)":"once")+" \u2014 the schedule rotates partners first, then mixes up opponents. ("+need+" is the target for "+ids.length+" players, since you partner one new person per round.)"));
+        else host.appendChild(noteEl("warn","⚠ "+ids.length+" players need "+need+" rounds for everyone to partner everyone (one new partner per round). At "+s.nrounds+" you won't reach all pairings \u2014 the app still prioritizes new partners each round, which is fine for casual play."));
         var gen=document.createElement("button");gen.className="btn primary";gen.textContent="Generate "+s.nrounds+" rounds";
         gen.onclick=function(){var res=genRounds(ids,s.nrounds,s.courts);s.rounds=res.rounds;s.rotState=res.state;s.lockedIds=ids.slice();s.roundIdx=0;saveDB();render();toast("Schedule ready");};
         host.appendChild(gen);
@@ -1269,7 +1272,7 @@
       var regen=document.createElement("button");regen.className="btn ghost";regen.style.color="var(--muted)";regen.textContent="Regenerate schedule";
       regen.onclick=function(){if(anyScores()&&!confirm("Regenerate? Clears entered scores."))return;
         s._swap=false;s._swapSel=null;
-        var res=genRounds(ids,s.nrounds||roundsToMeet(ids.length),s.courts);s.rounds=res.rounds;s.rotState=res.state;s.lockedIds=ids.slice();s.roundIdx=0;saveDB();render();};
+        var res=genRounds(ids,s.nrounds||roundsToPartnerAll(ids.length),s.courts);s.rounds=res.rounds;s.rotState=res.state;s.lockedIds=ids.slice();s.roundIdx=0;saveDB();render();};
       host.appendChild(regen);
     }
   }
