@@ -169,7 +169,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">2.2</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">2.3</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -1615,7 +1615,7 @@
         var dpg=p.gp>0?(diff/p.gp):0;
         var dpgStr=(dpg>0?"+":"")+(Math.round(dpg*10)/10);
         var numer=scored+bonus;
-        card.innerHTML='<div class="phead"><div class="prk">'+(i===0?"🏆":(i+1))+'</div>'+
+        card.innerHTML='<div class="phead"><div class="prk">'+(i===0?"🏆":(i===1?"🥈":(i===2?"🥉":(i+1))))+'</div>'+
           '<div class="pname">'+esc(combined?combinedName(p):nameOf(p.id))+'</div>'+
           '<div class="ptot">'+(p.rankPct!=null?p.rankPct:0)+'%<small>score</small></div></div>'+
           '<div class="statgrid">'+
@@ -1647,56 +1647,19 @@
       });
       host.appendChild(footEl("Score (the ranking) = (points scored + win bonus) ÷ points possible, shown as a %. It can top 100% because of win bonuses and overtime, and it's fair across different game counts. Differential = points scored − points against. Tap any player for head-to-head."));
     }
-    // ---- Game history download + copy ----
-    var recapLbl=document.createElement("p");recapLbl.className="lbl";recapLbl.style.marginTop="14px";recapLbl.textContent="Game history";
-    host.appendChild(recapLbl);
-    var sumScope=archived?"archived":(combined?"all":(mode==="track"?"track":"session"));
-    var ghName=archived?("pickleball-games-"+safeName(tr.name)+"-"+(archSnap.date||"")+".csv"):gameHistoryFilename(sumScope);
-    var ghRows=function(){return archived?gameHistoryRows("archived",window._rankArchIdx):gameHistoryRows(sumScope);};
-    var ghBtn=document.createElement("button");ghBtn.className="btn";
-    ghBtn.textContent=archived?"⬇ Download game history (this session)":(combined?"⬇ Download game history (all tracks)":(mode==="track"?"⬇ Download game history (this track)":"⬇ Download game history (this session)"));
-    ghBtn.onclick=function(){shareOrDownload(ghRows(),ghName,host);};
-    host.appendChild(ghBtn);
-    var ghCopy=document.createElement("button");ghCopy.className="btn";ghCopy.textContent="⧉ Copy game history";
-    ghCopy.onclick=function(){doCopy(tsv(ghRows()),host);};
-    host.appendChild(ghCopy);
-
-    if(archived)return; // archived view stops here — the rest is for live/cumulative scopes
-
-    // ---- Share / download (CSV file, all-in-one: rankings + head-to-head) ----
-    var shareLbl=document.createElement("p");shareLbl.className="lbl";shareLbl.style.marginTop="14px";shareLbl.textContent="Share / download (opens your phone\u2019s share menu, or saves a file)";
-    host.appendChild(shareLbl);
-    if(combined){
-      var sb1=document.createElement("button");sb1.className="btn primary";sb1.textContent="\u2191 Share ALL stats (all tracks)";
-      sb1.onclick=function(){shareOrDownload(bundleRows("all"),bundleFilename("all"),host);};
-      host.appendChild(sb1);
-    }else{
-      var sbS=document.createElement("button");sbS.className="btn primary";sbS.textContent="\u2191 Share this session";
-      sbS.onclick=function(){shareOrDownload(bundleRows("session"),bundleFilename("session"),host);};
-      host.appendChild(sbS);
-      var sbT=document.createElement("button");sbT.className="btn";sbT.textContent="\u2191 Share all sessions (this track)";
-      sbT.onclick=function(){shareOrDownload(bundleRows("track"),bundleFilename("track"),host);};
-      host.appendChild(sbT);
-    }
-    // ---- Copy to clipboard (for pasting at a computer) ----
-    var copyLbl=document.createElement("p");copyLbl.className="lbl";copyLbl.style.marginTop="14px";copyLbl.textContent="Or copy to clipboard (paste into Sheets)";
-    host.appendChild(copyLbl);
-    var exp=document.createElement("button");exp.className="btn";exp.textContent=combined?"Copy combined rankings":"Copy rankings (this session)";
-    exp.onclick=function(){doCopy(combined?combinedExportText():rankExportText(s),host);};
-    host.appendChild(exp);
-    if(!combined){
-      var exph=document.createElement("button");exph.className="btn";exph.textContent="Copy head-to-head (this session)";
-      exph.onclick=function(){doCopy(h2hExportText(s),host);};
-      host.appendChild(exph);
-    }
-    var exphc=document.createElement("button");exphc.className="btn";exphc.textContent=combined?"Copy head-to-head (all tracks)":"Copy head-to-head (all sessions, this track)";
-    exphc.onclick=function(){doCopy(h2hCumulativeExportText(combined),host);};
-    host.appendChild(exphc);
-    if(!combined){
-      var exprc=document.createElement("button");exprc.className="btn";exprc.textContent="Copy rankings (all sessions, this track)";
-      exprc.onclick=function(){doCopy(tsv([["Cumulative rankings — "+tr.name],[""]].concat(rankRowsFrom(trackCumulativeStandings(tr),combinedName))),host);};
-      host.appendChild(exprc);
-    }
+    // ---- Report: PDF + CSV (combined: games played · ratings · head-to-head) ----
+    var repScope=archived?"archived":(combined?"all":(mode==="track"?"track":"session"));
+    var repIdx=archived?window._rankArchIdx:null;
+    var repLbl=document.createElement("p");repLbl.className="lbl";repLbl.style.marginTop="14px";
+    repLbl.textContent=archived?"Report (this saved session)":(combined?"Report (all tracks)":(mode==="track"?"Report (this track)":"Report (this session)"));
+    repLbl.appendChild(helpBtn("Builds one report with three sections \u2014 games played & standings, ratings, and head-to-head. PDF opens a clean page; use your device\u2019s \u201CSave as PDF\u201D / \u201CSave to Files\u201D. CSV saves a spreadsheet file you can open in Sheets or Excel."));
+    host.appendChild(repLbl);
+    var pdfBtn=document.createElement("button");pdfBtn.className="btn primary";pdfBtn.textContent="📄 PDF report";
+    pdfBtn.onclick=function(){openReportPDF(repScope,repIdx);};
+    host.appendChild(pdfBtn);
+    var csvBtn=document.createElement("button");csvBtn.className="btn";csvBtn.textContent="⬇ CSV (spreadsheet)";
+    csvBtn.onclick=function(){shareOrDownload(reportRows(repScope,repIdx),reportFilename(repScope,"csv"),host);};
+    host.appendChild(csvBtn);
   }
   function el_empty(msg){var d=document.createElement("div");d.className="card";var p=document.createElement("p");p.className="empty";p.textContent=msg;d.appendChild(p);return d;}
   // cumulative standings for ONE track: current session own-games + all archived results
@@ -1953,6 +1916,125 @@
     var tag=scope==="session"?"session":"cumulative";
     return "pickleball-"+who+"-"+tag+"-"+date+".csv";
   }
+
+  // ---- Combined report (Games played · Ratings · Head-to-head) ----------------
+  // scope: "session" | "track" | "all" | "archived"(+archIdx). Returns {title,sub,standings,h2h,nm}.
+  function reportData(scope,archIdx){
+    var tr=curTrack(),title,sub,standArr,H,nm;
+    if(scope==="archived"){
+      var a=(tr.archive||[])[archIdx];
+      title="Session report — "+tr.name; sub=(a&&a.date||"")+(a&&a.location?" · "+a.location:"");
+      standArr=(a&&a.results||[]).slice(); H=(a&&a.h2h)||{}; nm=function(p){return p.name||nameOf(p.id);};
+    }else if(scope==="all"){
+      title="All-tracks report"; sub="Every session, all tracks";
+      standArr=combinedStandings(); H=cumulativeH2HAllTracks(); nm=function(p){return combinedName(p);};
+    }else if(scope==="track"){
+      title="Track report — "+tr.name; sub="All sessions in this track";
+      standArr=trackCumulativeStandings(tr); H=cumulativeH2HForTrack(tr); nm=function(p){return combinedName(p);};
+    }else{
+      var s=S(); title="Session report — "+tr.name; sub=(s.date||"")+(s.location?" · "+s.location:"");
+      standArr=standings(s); H=headToHead(s); nm=function(p){return nameOf(p.id);};
+    }
+    return {title:title,sub:sub,standings:standArr,h2h:H,nm:nm};
+  }
+
+  // CSV rows for the combined 3-section report
+  function reportRows(scope,archIdx){
+    var d=reportData(scope,archIdx);
+    var rows=[[d.title],[d.sub],[""]];
+    // Section 1: games played + core stats
+    rows.push(["GAMES PLAYED & STANDINGS"]);
+    rows.push(["Rank","Player","Score %","Games","W","L","Pts scored","Pts against","Differential","Pts/game","Rating"]);
+    d.standings.forEach(function(p,i){
+      if(!p.gp)return;
+      var diff=(p.scored||0)-(p.against||0);
+      rows.push([i+1,d.nm(p),(p.rankPct!=null?p.rankPct+"%":""),p.gp,p.w,p.l,(p.scored||0),(p.against||0),(diff>0?"+":"")+diff,(p.ppg!=null?Math.round(p.ppg*10)/10:""),fmtRating(ratingOf(p.id))]);
+    });
+    rows.push([""]);
+    // Section 2: ratings (own little block, clean)
+    rows.push(["RATINGS"]);
+    rows.push(["Player","Rating"]);
+    d.standings.forEach(function(p){ if(!p.gp)return; rows.push([d.nm(p),fmtRating(ratingOf(p.id))||"—"]); });
+    rows.push([""]);
+    // Section 3: head-to-head (per player: opponents then partners)
+    rows.push(["HEAD-TO-HEAD"]);
+    d.standings.forEach(function(p){
+      if(!p.gp)return;
+      var rec=d.h2h[p.id]; if(!rec)return;
+      rows.push([""]);rows.push([d.nm(p)]);
+      var opp=Object.keys(rec.opp||{});
+      if(opp.length){
+        rows.push(["","vs (opponent)","W","L","Pts for","Pts against"]);
+        opp.sort(function(a,b){var ra=rec.opp[a],rb=rec.opp[b];var pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0,pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;return (rb.w-ra.w)||(pb-pa)||((rb.pf-rb.pa)-(ra.pf-ra.pa));});
+        opp.forEach(function(k){var v=rec.opp[k];rows.push(["",nameOf(k),v.w,v.l,v.pf,v.pa]);});
+      }
+      var par=Object.keys(rec.par||{});
+      if(par.length){
+        rows.push(["","with (partner)","W","L","Pts for","Pts against"]);
+        par.sort(function(a,b){var ra=rec.par[a],rb=rec.par[b];var pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0,pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;return (rb.w-ra.w)||(pb-pa)||((rb.pf-rb.pa)-(ra.pf-ra.pa));});
+        par.forEach(function(k){var v=rec.par[k];rows.push(["",nameOf(k),v.w,v.l,v.pf,v.pa]);});
+      }
+    });
+    return rows;
+  }
+  function reportFilename(scope,ext){
+    var tr=curTrack(),s=S();
+    var date=(scope==="session"?(s.date||new Date().toISOString().slice(0,10)):new Date().toISOString().slice(0,10));
+    var who=scope==="all"?"all-tracks":safeName(tr.name);
+    return "pickleball-report-"+who+"-"+date+"."+ext;
+  }
+
+  // Build a clean printable HTML page and open the device print dialog (Save as PDF / Save to Files)
+  function openReportPDF(scope,archIdx){
+    var d=reportData(scope,archIdx);
+    function esc2(x){return String(x==null?"":x).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}
+    var html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+      '<title>'+esc2(d.title)+'</title><style>'+
+      'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#16202b;margin:24px;font-size:12px;}'+
+      'h1{color:#2f8f3e;font-size:20px;margin:0 0 2px;}h2{font-size:13px;margin:16px 0 6px;border-bottom:2px solid #2f8f3e;padding-bottom:3px;color:#16202b;}'+
+      '.sub{color:#52606d;font-size:11px;margin:0 0 8px;}table{border-collapse:collapse;width:100%;margin:4px 0 10px;}'+
+      'th,td{text-align:left;padding:4px 7px;border-bottom:1px solid #e2e8f0;font-size:11px;}th{background:#f5f8f5;color:#16202b;}'+
+      '.r{text-align:right;}.pname{font-weight:700;margin:10px 0 2px;font-size:12px;}'+
+      '.btnbar{margin:0 0 14px;}@media print{.btnbar{display:none;}}'+
+      'button{font-size:14px;padding:8px 14px;margin-right:8px;border:1px solid #2f8f3e;background:#2f8f3e;color:#fff;border-radius:8px;}'+
+      '</style></head><body>'+
+      '<div class="btnbar"><button onclick="window.print()">Save as PDF / Print</button><span style="color:#52606d;font-size:12px">Use your device\u2019s \u201CSave to Files\u201D or \u201CSave as PDF\u201D in the print dialog.</span></div>'+
+      '<h1>'+esc2(d.title)+'</h1><p class="sub">'+esc2(d.sub)+'</p>';
+    // games played + standings
+    html+='<h2>Games played &amp; standings</h2><table><tr><th>#</th><th>Player</th><th>Score %</th><th>Games</th><th>W\u2013L</th><th>Pts</th><th>Diff</th><th>Pts/game</th><th>Rating</th></tr>';
+    d.standings.forEach(function(p,i){ if(!p.gp)return; var diff=(p.scored||0)-(p.against||0);
+      html+='<tr><td>'+(i+1)+'</td><td>'+esc2(d.nm(p))+'</td><td>'+(p.rankPct!=null?p.rankPct+'%':'')+'</td><td>'+p.gp+'</td><td>'+p.w+'\u2013'+p.l+'</td><td>'+(p.scored||0)+'</td><td>'+(diff>0?'+':'')+diff+'</td><td>'+(p.ppg!=null?Math.round(p.ppg*10)/10:'')+'</td><td>'+(fmtRating(ratingOf(p.id))||'\u2014')+'</td></tr>';
+    });
+    html+='</table>';
+    // ratings
+    html+='<h2>Ratings</h2><table><tr><th>Player</th><th>Rating</th></tr>';
+    d.standings.forEach(function(p){ if(!p.gp)return; html+='<tr><td>'+esc2(d.nm(p))+'</td><td>'+(fmtRating(ratingOf(p.id))||'\u2014')+'</td></tr>'; });
+    html+='</table>';
+    // head-to-head
+    html+='<h2>Head-to-head</h2>';
+    d.standings.forEach(function(p){
+      if(!p.gp)return; var rec=d.h2h[p.id]; if(!rec)return;
+      html+='<div class="pname">'+esc2(d.nm(p))+'</div>';
+      var opp=Object.keys(rec.opp||{});
+      if(opp.length){
+        opp.sort(function(a,b){var ra=rec.opp[a],rb=rec.opp[b];var pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0,pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;return (rb.w-ra.w)||(pb-pa)||((rb.pf-rb.pa)-(ra.pf-ra.pa));});
+        html+='<table><tr><th>vs opponent</th><th>W\u2013L</th><th>Pts for</th><th>Pts against</th></tr>';
+        opp.forEach(function(k){var v=rec.opp[k];html+='<tr><td>'+esc2(nameOf(k))+'</td><td>'+v.w+'\u2013'+v.l+'</td><td>'+v.pf+'</td><td>'+v.pa+'</td></tr>';});
+        html+='</table>';
+      }
+      var par=Object.keys(rec.par||{});
+      if(par.length){
+        par.sort(function(a,b){var ra=rec.par[a],rb=rec.par[b];var pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0,pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;return (rb.w-ra.w)||(pb-pa)||((rb.pf-rb.pa)-(ra.pf-ra.pa));});
+        html+='<table><tr><th>with partner</th><th>W\u2013L</th><th>Pts for</th><th>Pts against</th></tr>';
+        par.forEach(function(k){var v=rec.par[k];html+='<tr><td>'+esc2(nameOf(k))+'</td><td>'+v.w+'\u2013'+v.l+'</td><td>'+v.pf+'</td><td>'+v.pa+'</td></tr>';});
+        html+='</table>';
+      }
+    });
+    html+='</body></html>';
+    var w=window.open("","_blank");
+    if(!w){toast("Allow pop-ups to create the PDF, then try again.");return;}
+    w.document.open();w.document.write(html);w.document.close();
+  }
   // share results. iOS Safari is unreliable at sharing Blob FILES (often empty),
   // but reliable at sharing TEXT. So: try file share; if unavailable, share text; then download; then clipboard.
   function shareOrDownload(rows,filename,host){
@@ -2014,15 +2096,17 @@
       var canEdit=!!(a.src&&a.src.rounds);
       row.innerHTML='<div class="meta"><div class="d">'+esc(a.date||"")+(a.location?" · "+esc(a.location):"")+'</div><div class="s">'+a.results.length+' players · winner: '+esc(winner)+'</div></div>'+
         '<div class="sesbtns">'+
-        '<button class="iconbtn gamesbtn" style="width:auto;padding:0 10px;font-size:12px">Games download</button>'+
+        '<button class="iconbtn pdfbtn" style="width:auto;padding:0 10px;font-size:12px">PDF</button>'+
+        '<button class="iconbtn csvbtn" style="width:auto;padding:0 10px;font-size:12px">CSV</button>'+
         (canEdit?'<button class="iconbtn editbtn" style="width:auto;padding:0 10px;font-size:12px">Games edit</button>':'')+
         '<button class="iconbtn rankbtn" style="width:auto;padding:0 10px;font-size:12px">Rank</button>'+
         '<button class="iconbtn h2hbtn" style="width:auto;padding:0 10px;font-size:12px">H2H</button>'+
         '<button class="iconbtn delbtn" style="width:auto;padding:0 10px;font-size:14px;color:var(--danger)" title="Delete this session">✕</button>'+
         '</div>';
-      row.querySelector(".gamesbtn").onclick=function(){
+      row.querySelector(".pdfbtn").onclick=function(){openReportPDF("archived",i);};
+      row.querySelector(".csvbtn").onclick=function(){
         var date=(a.date||new Date().toISOString().slice(0,10));
-        shareOrDownload(gameHistoryRows("archived",i),"pickleball-games-"+safeName(tr.name)+"-"+date+".csv",host);
+        shareOrDownload(reportRows("archived",i),"pickleball-report-"+safeName(tr.name)+"-"+date+".csv",host);
       };
       if(canEdit)row.querySelector(".editbtn").onclick=function(){editArchivedSession(i);};
       row.querySelector(".delbtn").onclick=function(){
