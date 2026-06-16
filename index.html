@@ -108,6 +108,24 @@
   .leadbanner .lbsub{font-size:12px;opacity:.9;}
   .priorbanner{background:var(--surface2);border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:13px;}
   .archbanner{background:var(--surface2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:8px 11px;font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:0;}
+  .rpt-overlay{position:fixed;inset:0;z-index:1000;background:#fff;overflow:auto;-webkit-overflow-scrolling:touch;}
+  .rpt-bar{position:sticky;top:0;display:flex;gap:8px;padding:10px 12px;background:#fff;border-bottom:1px solid #e2e8f0;}
+  .rpt-bar button{font-size:14px;padding:9px 14px;border-radius:8px;border:1px solid #2f8f3e;cursor:pointer;}
+  .rpt-bar .rpt-close{background:#fff;color:#2f8f3e;}
+  .rpt-bar .rpt-print{background:#2f8f3e;color:#fff;}
+  .rpt-page{padding:18px 20px 60px;color:#16202b;font-size:12px;max-width:900px;margin:0 auto;}
+  .rpt-page h1{color:#2f8f3e;font-size:20px;margin:0 0 2px;}
+  .rpt-page h2{font-size:13px;margin:16px 0 6px;border-bottom:2px solid #2f8f3e;padding-bottom:3px;}
+  .rpt-page .rpt-sub{color:#52606d;font-size:11px;margin:0 0 8px;}
+  .rpt-page table{border-collapse:collapse;width:100%;margin:4px 0 10px;}
+  .rpt-page th,.rpt-page td{text-align:left;padding:4px 7px;border-bottom:1px solid #e2e8f0;font-size:11px;}
+  .rpt-page th{background:#f5f8f5;}
+  .rpt-page .rpt-pname{font-weight:700;margin:10px 0 2px;}
+  @media print{
+    body>*{display:none !important;}
+    .rpt-overlay{display:block !important;position:static;}
+    .rpt-overlay .rpt-bar{display:none !important;}
+  }
   .priorbanner .pbk{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.05em;}
   .priorbanner .pbv{font-weight:600;color:var(--text);}
   .priorbanner .pbd{color:var(--dim);font-size:12px;}
@@ -169,7 +187,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">2.3</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">2.3.2</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -1942,21 +1960,17 @@
   function reportRows(scope,archIdx){
     var d=reportData(scope,archIdx);
     var rows=[[d.title],[d.sub],[""]];
-    // Section 1: games played + core stats
+    // Section 1: games played + standings
     rows.push(["GAMES PLAYED & STANDINGS"]);
-    rows.push(["Rank","Player","Score %","Games","W","L","Pts scored","Pts against","Differential","Pts/game","Rating"]);
+    rows.push(["#","Player","Score %","Games","W–L","Win Bonus","Total Pts Possible","Total Pts Scored","Total Pts Against","Pts/Game","Diff/Game"]);
     d.standings.forEach(function(p,i){
       if(!p.gp)return;
       var diff=(p.scored||0)-(p.against||0);
-      rows.push([i+1,d.nm(p),(p.rankPct!=null?p.rankPct+"%":""),p.gp,p.w,p.l,(p.scored||0),(p.against||0),(diff>0?"+":"")+diff,(p.ppg!=null?Math.round(p.ppg*10)/10:""),fmtRating(ratingOf(p.id))]);
+      var dpg=p.gp>0?Math.round(diff/p.gp*10)/10:0;
+      rows.push([i+1,d.nm(p),(p.rankPct!=null?p.rankPct+"%":""),p.gp,p.w+"–"+p.l,(p.bonus!=null?p.bonus:0),(p.possible!=null?p.possible:0),(p.scored||0),(p.against||0),(p.ppg!=null?Math.round(p.ppg*10)/10:""),(dpg>0?"+":"")+dpg]);
     });
     rows.push([""]);
-    // Section 2: ratings (own little block, clean)
-    rows.push(["RATINGS"]);
-    rows.push(["Player","Rating"]);
-    d.standings.forEach(function(p){ if(!p.gp)return; rows.push([d.nm(p),fmtRating(ratingOf(p.id))||"—"]); });
-    rows.push([""]);
-    // Section 3: head-to-head (per player: opponents then partners)
+    // Section 2: head-to-head (per player: opponents then partners)
     rows.push(["HEAD-TO-HEAD"]);
     d.standings.forEach(function(p){
       if(!p.gp)return;
@@ -1988,52 +2002,44 @@
   function openReportPDF(scope,archIdx){
     var d=reportData(scope,archIdx);
     function esc2(x){return String(x==null?"":x).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}
-    var html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
-      '<title>'+esc2(d.title)+'</title><style>'+
-      'body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#16202b;margin:24px;font-size:12px;}'+
-      'h1{color:#2f8f3e;font-size:20px;margin:0 0 2px;}h2{font-size:13px;margin:16px 0 6px;border-bottom:2px solid #2f8f3e;padding-bottom:3px;color:#16202b;}'+
-      '.sub{color:#52606d;font-size:11px;margin:0 0 8px;}table{border-collapse:collapse;width:100%;margin:4px 0 10px;}'+
-      'th,td{text-align:left;padding:4px 7px;border-bottom:1px solid #e2e8f0;font-size:11px;}th{background:#f5f8f5;color:#16202b;}'+
-      '.r{text-align:right;}.pname{font-weight:700;margin:10px 0 2px;font-size:12px;}'+
-      '.btnbar{margin:0 0 14px;}@media print{.btnbar{display:none;}}'+
-      'button{font-size:14px;padding:8px 14px;margin-right:8px;border:1px solid #2f8f3e;background:#2f8f3e;color:#fff;border-radius:8px;}'+
-      '</style></head><body>'+
-      '<div class="btnbar"><button onclick="window.print()">Save as PDF / Print</button><span style="color:#52606d;font-size:12px">Use your device\u2019s \u201CSave to Files\u201D or \u201CSave as PDF\u201D in the print dialog.</span></div>'+
-      '<h1>'+esc2(d.title)+'</h1><p class="sub">'+esc2(d.sub)+'</p>';
+    var body='<h1>'+esc2(d.title)+'</h1><p class="rpt-sub">'+esc2(d.sub)+'</p>';
     // games played + standings
-    html+='<h2>Games played &amp; standings</h2><table><tr><th>#</th><th>Player</th><th>Score %</th><th>Games</th><th>W\u2013L</th><th>Pts</th><th>Diff</th><th>Pts/game</th><th>Rating</th></tr>';
-    d.standings.forEach(function(p,i){ if(!p.gp)return; var diff=(p.scored||0)-(p.against||0);
-      html+='<tr><td>'+(i+1)+'</td><td>'+esc2(d.nm(p))+'</td><td>'+(p.rankPct!=null?p.rankPct+'%':'')+'</td><td>'+p.gp+'</td><td>'+p.w+'\u2013'+p.l+'</td><td>'+(p.scored||0)+'</td><td>'+(diff>0?'+':'')+diff+'</td><td>'+(p.ppg!=null?Math.round(p.ppg*10)/10:'')+'</td><td>'+(fmtRating(ratingOf(p.id))||'\u2014')+'</td></tr>';
+    body+='<h2>Games played &amp; standings</h2><table><tr><th>#</th><th>Player</th><th>Score %</th><th>Games</th><th>W\u2013L</th><th>Win Bonus</th><th>Pts Possible</th><th>Pts Scored</th><th>Pts Against</th><th>Pts/Game</th><th>Diff/Game</th></tr>';
+    d.standings.forEach(function(p,i){ if(!p.gp)return; var diff=(p.scored||0)-(p.against||0); var dpg=p.gp>0?Math.round(diff/p.gp*10)/10:0;
+      body+='<tr><td>'+(i+1)+'</td><td>'+esc2(d.nm(p))+'</td><td>'+(p.rankPct!=null?p.rankPct+'%':'')+'</td><td>'+p.gp+'</td><td>'+p.w+'\u2013'+p.l+'</td><td>'+(p.bonus!=null?p.bonus:0)+'</td><td>'+(p.possible!=null?p.possible:0)+'</td><td>'+(p.scored||0)+'</td><td>'+(p.against||0)+'</td><td>'+(p.ppg!=null?Math.round(p.ppg*10)/10:'')+'</td><td>'+(dpg>0?'+':'')+dpg+'</td></tr>';
     });
-    html+='</table>';
-    // ratings
-    html+='<h2>Ratings</h2><table><tr><th>Player</th><th>Rating</th></tr>';
-    d.standings.forEach(function(p){ if(!p.gp)return; html+='<tr><td>'+esc2(d.nm(p))+'</td><td>'+(fmtRating(ratingOf(p.id))||'\u2014')+'</td></tr>'; });
-    html+='</table>';
+    body+='</table>';
     // head-to-head
-    html+='<h2>Head-to-head</h2>';
+    body+='<h2>Head-to-head</h2>';
     d.standings.forEach(function(p){
       if(!p.gp)return; var rec=d.h2h[p.id]; if(!rec)return;
-      html+='<div class="pname">'+esc2(d.nm(p))+'</div>';
+      body+='<div class="rpt-pname">'+esc2(d.nm(p))+'</div>';
       var opp=Object.keys(rec.opp||{});
       if(opp.length){
         opp.sort(function(a,b){var ra=rec.opp[a],rb=rec.opp[b];var pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0,pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;return (rb.w-ra.w)||(pb-pa)||((rb.pf-rb.pa)-(ra.pf-ra.pa));});
-        html+='<table><tr><th>vs opponent</th><th>W\u2013L</th><th>Pts for</th><th>Pts against</th></tr>';
-        opp.forEach(function(k){var v=rec.opp[k];html+='<tr><td>'+esc2(nameOf(k))+'</td><td>'+v.w+'\u2013'+v.l+'</td><td>'+v.pf+'</td><td>'+v.pa+'</td></tr>';});
-        html+='</table>';
+        body+='<table><tr><th>vs opponent</th><th>W\u2013L</th><th>Pts for</th><th>Pts against</th></tr>';
+        opp.forEach(function(k){var v=rec.opp[k];body+='<tr><td>'+esc2(nameOf(k))+'</td><td>'+v.w+'\u2013'+v.l+'</td><td>'+v.pf+'</td><td>'+v.pa+'</td></tr>';});
+        body+='</table>';
       }
       var par=Object.keys(rec.par||{});
       if(par.length){
         par.sort(function(a,b){var ra=rec.par[a],rb=rec.par[b];var pa=(ra.w+ra.l)?ra.w/(ra.w+ra.l):0,pb=(rb.w+rb.l)?rb.w/(rb.w+rb.l):0;return (rb.w-ra.w)||(pb-pa)||((rb.pf-rb.pa)-(ra.pf-ra.pa));});
-        html+='<table><tr><th>with partner</th><th>W\u2013L</th><th>Pts for</th><th>Pts against</th></tr>';
-        par.forEach(function(k){var v=rec.par[k];html+='<tr><td>'+esc2(nameOf(k))+'</td><td>'+v.w+'\u2013'+v.l+'</td><td>'+v.pf+'</td><td>'+v.pa+'</td></tr>';});
-        html+='</table>';
+        body+='<table><tr><th>with partner</th><th>W\u2013L</th><th>Pts for</th><th>Pts against</th></tr>';
+        par.forEach(function(k){var v=rec.par[k];body+='<tr><td>'+esc2(nameOf(k))+'</td><td>'+v.w+'\u2013'+v.l+'</td><td>'+v.pf+'</td><td>'+v.pa+'</td></tr>';});
+        body+='</table>';
       }
     });
-    html+='</body></html>';
-    var w=window.open("","_blank");
-    if(!w){toast("Allow pop-ups to create the PDF, then try again.");return;}
-    w.document.open();w.document.write(html);w.document.close();
+    // build in-app overlay (no new window -> no trap on Home Screen apps)
+    var prev=document.getElementById("reportOverlay");if(prev)prev.parentNode.removeChild(prev);
+    var ov=document.createElement("div");ov.id="reportOverlay";ov.className="rpt-overlay";
+    ov.innerHTML='<div class="rpt-bar">'+
+        '<button class="rpt-close" id="rptClose">‹ Back to app</button>'+
+        '<button class="rpt-print" id="rptPrint">Save as PDF / Print</button>'+
+      '</div>'+
+      '<div class="rpt-page" id="rptPage">'+body+'</div>';
+    document.body.appendChild(ov);
+    document.getElementById("rptClose").onclick=function(){ov.parentNode&&ov.parentNode.removeChild(ov);};
+    document.getElementById("rptPrint").onclick=function(){window.print();};
   }
   // share results. iOS Safari is unreliable at sharing Blob FILES (often empty),
   // but reliable at sharing TEXT. So: try file share; if unavailable, share text; then download; then clipboard.
