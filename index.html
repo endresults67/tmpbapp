@@ -187,7 +187,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">2.3.2</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">2.4</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -1551,7 +1551,8 @@
       diffpg:{label:"Diff/game",fn:function(a,b){var da=a.gp>0?((a.scored||0)-(a.against||0))/a.gp:0,db=b.gp>0?((b.scored||0)-(b.against||0))/b.gp:0;return db-da||b.gp-a.gp;}},
       bonus:{label:"Win bonus",fn:function(a,b){return (b.bonus||0)-(a.bonus||0)||b.w-a.w||b.gp-a.gp;}},
       pctpts:{label:"% of pts",fn:function(a,b){return b.pct-a.pct||b.gp-a.gp;}},
-      games:{label:"Games",fn:function(a,b){return b.gp-a.gp||b.rankPct-a.rankPct;}}
+      games:{label:"Games",fn:function(a,b){return b.gp-a.gp||b.rankPct-a.rankPct;}},
+      az:{label:"A–Z",fn:function(a,b){var na=(combined?combinedName(a):nameOf(a.id))||"",nb=(combined?combinedName(b):nameOf(b.id))||"";return na.toLowerCase().localeCompare(nb.toLowerCase());}}
     };
     if(!sorts[window._rankSort])window._rankSort="score";
     r=r.slice().sort(sorts[window._rankSort].fn);
@@ -1592,7 +1593,7 @@
       var sl=document.createElement("span");sl.className="sortlbl";sl.textContent="Sort by";
       sl.appendChild(helpBtn("Players are ranked by Score % by default: points plus win bonuses as a share of the points you could have scored \u2014 fair across different game counts. Tap any chip to rank by that stat instead. The chips match the numbers on each player\u2019s card."));
       sortRow.appendChild(sl);
-      ["score","wins","pts","scored","ppg","diff","diffpg","bonus","pctpts","games"].forEach(function(key){
+      ["score","wins","pts","scored","ppg","diff","diffpg","bonus","pctpts","games","az"].forEach(function(key){
         var b=document.createElement("button");b.className="sortchip"+(window._rankSort===key?" on":"");b.textContent=sorts[key].label;
         b.onclick=function(){window._rankSort=key;render();};
         sortRow.appendChild(b);
@@ -1935,31 +1936,68 @@
     return "pickleball-"+who+"-"+tag+"-"+date+".csv";
   }
 
-  // ---- Combined report (Games played · Ratings · Head-to-head) ----------------
-  // scope: "session" | "track" | "all" | "archived"(+archIdx). Returns {title,sub,standings,h2h,nm}.
+  // shared sort comparators (used by rankings view AND reports so they match)
+  function rankComparator(key,combined){
+    var nm=function(p){return (combined?combinedName(p):nameOf(p.id))||"";};
+    var map={
+      score:function(a,b){return b.rankPct-a.rankPct||b.pct-a.pct||b.gp-a.gp;},
+      wins:function(a,b){return b.w-a.w||(a.l-b.l)||b.gp-a.gp;},
+      pts:function(a,b){return b.pts-a.pts||b.w-a.w||b.gp-a.gp;},
+      scored:function(a,b){return (b.scored||0)-(a.scored||0)||b.gp-a.gp;},
+      ppg:function(a,b){return b.ppg-a.ppg||b.gp-a.gp;},
+      diff:function(a,b){return ((b.scored||0)-(b.against||0))-((a.scored||0)-(a.against||0))||b.gp-a.gp;},
+      diffpg:function(a,b){var da=a.gp>0?((a.scored||0)-(a.against||0))/a.gp:0,db=b.gp>0?((b.scored||0)-(b.against||0))/b.gp:0;return db-da||b.gp-a.gp;},
+      bonus:function(a,b){return (b.bonus||0)-(a.bonus||0)||b.w-a.w||b.gp-a.gp;},
+      pctpts:function(a,b){return b.pct-a.pct||b.gp-a.gp;},
+      games:function(a,b){return b.gp-a.gp||b.rankPct-a.rankPct;},
+      az:function(a,b){return nm(a).toLowerCase().localeCompare(nm(b).toLowerCase());}
+    };
+    return map[key]||map.score;
+  }
+  var SORT_LABELS={score:"Score %",wins:"W–L",pts:"Total pts",scored:"Tot pts scored",ppg:"Pts/game",diff:"Differential",diffpg:"Diff/game",bonus:"Win bonus",pctpts:"% of pts",games:"Games",az:"A–Z (name)"};
+
+  // ---- Combined report (Games played · Head-to-head) ----------------
+  // scope: "session" | "track" | "all" | "archived"(+archIdx). Returns {title,sub,standings,h2h,nm,filterNote,sortLabel}.
   function reportData(scope,archIdx){
-    var tr=curTrack(),title,sub,standArr,H,nm;
+    var tr=curTrack(),title,sub,standArr,H,nm,combined=false,mirror=false;
     if(scope==="archived"){
       var a=(tr.archive||[])[archIdx];
       title="Session report — "+tr.name; sub=(a&&a.date||"")+(a&&a.location?" · "+a.location:"");
       standArr=(a&&a.results||[]).slice(); H=(a&&a.h2h)||{}; nm=function(p){return p.name||nameOf(p.id);};
     }else if(scope==="all"){
       title="All-tracks report"; sub="Every session, all tracks";
-      standArr=combinedStandings(); H=cumulativeH2HAllTracks(); nm=function(p){return combinedName(p);};
+      standArr=combinedStandings(); H=cumulativeH2HAllTracks(); combined=true; mirror=true; nm=function(p){return combinedName(p);};
     }else if(scope==="track"){
       title="Track report — "+tr.name; sub="All sessions in this track";
-      standArr=trackCumulativeStandings(tr); H=cumulativeH2HForTrack(tr); nm=function(p){return combinedName(p);};
+      standArr=trackCumulativeStandings(tr); H=cumulativeH2HForTrack(tr); mirror=true; nm=function(p){return combinedName(p);};
     }else{
       var s=S(); title="Session report — "+tr.name; sub=(s.date||"")+(s.location?" · "+s.location:"");
-      standArr=standings(s); H=headToHead(s); nm=function(p){return nameOf(p.id);};
+      standArr=standings(s); H=headToHead(s); mirror=true; nm=function(p){return nameOf(p.id);};
     }
-    return {title:title,sub:sub,standings:standArr,h2h:H,nm:nm};
+    var sortLabel=null,filterNote=null;
+    if(mirror){
+      // mirror the on-screen view: same sort + same games filter
+      var key=window._rankSort||"score";
+      standArr=standArr.slice().sort(rankComparator(key,combined));
+      sortLabel=SORT_LABELS[key]||"Score %";
+      var minG=window._minGames||0;
+      if(minG>0){
+        standArr=standArr.filter(function(p){return (p.gp||0)>=minG;});
+        filterNote="Showing only players with "+minG+"+ games (filter active on screen).";
+      }
+    }
+    // alphabetical order of players for the HEAD-TO-HEAD section (blocks A–Z), independent of standings sort
+    var h2hOrder=standArr.slice().sort(function(a,b){return (nm(a)||"").toLowerCase().localeCompare((nm(b)||"").toLowerCase());});
+    return {title:title,sub:sub,standings:standArr,h2hOrder:h2hOrder,h2h:H,nm:nm,filterNote:filterNote,sortLabel:sortLabel};
   }
 
   // CSV rows for the combined 3-section report
   function reportRows(scope,archIdx){
     var d=reportData(scope,archIdx);
-    var rows=[[d.title],[d.sub],[""]];
+    var rows=[[d.title],[d.sub]];
+    if(d.sortLabel)rows.push(["Sorted by: "+d.sortLabel]);
+    if(d.filterNote)rows.push([d.filterNote]);
+    rows.push([""]);
     // Section 1: games played + standings
     rows.push(["GAMES PLAYED & STANDINGS"]);
     rows.push(["#","Player","Score %","Games","W–L","Win Bonus","Total Pts Possible","Total Pts Scored","Total Pts Against","Pts/Game","Diff/Game"]);
@@ -1970,9 +2008,9 @@
       rows.push([i+1,d.nm(p),(p.rankPct!=null?p.rankPct+"%":""),p.gp,p.w+"–"+p.l,(p.bonus!=null?p.bonus:0),(p.possible!=null?p.possible:0),(p.scored||0),(p.against||0),(p.ppg!=null?Math.round(p.ppg*10)/10:""),(dpg>0?"+":"")+dpg]);
     });
     rows.push([""]);
-    // Section 2: head-to-head (per player: opponents then partners)
-    rows.push(["HEAD-TO-HEAD"]);
-    d.standings.forEach(function(p){
+    // Section 2: head-to-head — player blocks A–Z; opponents/partners by record
+    rows.push(["HEAD-TO-HEAD (players A–Z)"]);
+    d.h2hOrder.forEach(function(p){
       if(!p.gp)return;
       var rec=d.h2h[p.id]; if(!rec)return;
       rows.push([""]);rows.push([d.nm(p)]);
@@ -2003,15 +2041,18 @@
     var d=reportData(scope,archIdx);
     function esc2(x){return String(x==null?"":x).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}
     var body='<h1>'+esc2(d.title)+'</h1><p class="rpt-sub">'+esc2(d.sub)+'</p>';
+    if(d.sortLabel||d.filterNote){
+      body+='<p class="rpt-sub">'+(d.sortLabel?'Sorted by: '+esc2(d.sortLabel):'')+(d.sortLabel&&d.filterNote?' · ':'')+(d.filterNote?esc2(d.filterNote):'')+'</p>';
+    }
     // games played + standings
     body+='<h2>Games played &amp; standings</h2><table><tr><th>#</th><th>Player</th><th>Score %</th><th>Games</th><th>W\u2013L</th><th>Win Bonus</th><th>Pts Possible</th><th>Pts Scored</th><th>Pts Against</th><th>Pts/Game</th><th>Diff/Game</th></tr>';
     d.standings.forEach(function(p,i){ if(!p.gp)return; var diff=(p.scored||0)-(p.against||0); var dpg=p.gp>0?Math.round(diff/p.gp*10)/10:0;
       body+='<tr><td>'+(i+1)+'</td><td>'+esc2(d.nm(p))+'</td><td>'+(p.rankPct!=null?p.rankPct+'%':'')+'</td><td>'+p.gp+'</td><td>'+p.w+'\u2013'+p.l+'</td><td>'+(p.bonus!=null?p.bonus:0)+'</td><td>'+(p.possible!=null?p.possible:0)+'</td><td>'+(p.scored||0)+'</td><td>'+(p.against||0)+'</td><td>'+(p.ppg!=null?Math.round(p.ppg*10)/10:'')+'</td><td>'+(dpg>0?'+':'')+dpg+'</td></tr>';
     });
     body+='</table>';
-    // head-to-head
-    body+='<h2>Head-to-head</h2>';
-    d.standings.forEach(function(p){
+    // head-to-head — player blocks A–Z; opponents/partners by record
+    body+='<h2>Head-to-head <span style="font-weight:400;font-size:11px;color:#52606d">(players A\u2013Z)</span></h2>';
+    d.h2hOrder.forEach(function(p){
       if(!p.gp)return; var rec=d.h2h[p.id]; if(!rec)return;
       body+='<div class="rpt-pname">'+esc2(d.nm(p))+'</div>';
       var opp=Object.keys(rec.opp||{});
