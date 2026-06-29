@@ -212,7 +212,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball T.M. <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">3.2</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball T.M. <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">3.3</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -942,7 +942,7 @@
 
     var cr=document.createElement("div");cr.className="card";cr.style.marginTop="10px";
     cr.innerHTML='<p style="font-size:11.5px;line-height:1.5;color:var(--dim);margin:0">'+
-      '\u00A9 2026 Mark Endres. All rights reserved. Pickleball T.M. Round Robin \u2014 version 3.2.<br>'+
+      '\u00A9 2026 Mark Endres. All rights reserved. Pickleball T.M. Round Robin \u2014 version 3.3.<br>'+
       'For personal use only. Not to be copied, redistributed, or used commercially without permission.</p>';
     host.appendChild(cr);
   }
@@ -1580,7 +1580,20 @@
     entry.querySelector("#gd").onclick=function(){fp.type="doubles";fp.t1=[fp.t1[0]||null,null];fp.t2=[fp.t2[0]||null,null];render();};
     entry.querySelector("#gs").onclick=function(){fp.type="singles";render();};
 
-    var opts=DB.roster.slice();
+    // v3.3: recently-added players (this rec session) float to the top of the pickers
+    if(!s._fpRecent)s._fpRecent=[];
+    var recent=s._fpRecent.filter(function(id){return DB.roster.some(function(r){return r.id===id;});});
+    var rosterAlpha=DB.roster.slice().sort(function(a,b){return a.name.localeCompare(b.name);});
+    var opts=[];
+    recent.forEach(function(id){var r=rosterAlpha.filter(function(x){return x.id===id;})[0];if(r)opts.push(r);});
+    rosterAlpha.forEach(function(r){if(recent.indexOf(r.id)<0)opts.push(r);});
+    function fpAddPlayer(name){
+      var id=addToRoster(name);
+      if(id){
+        s._fpRecent=[id].concat((s._fpRecent||[]).filter(function(x){return x!==id;}));
+      }
+      saveDB();render();
+    }
     function select(teamArr,slot){
       var sel=document.createElement("select");
       var none=document.createElement("option");none.value="";none.textContent="— pick player —";sel.appendChild(none);
@@ -1608,8 +1621,8 @@
     var addnew=document.createElement("div");addnew.className="row";addnew.style.marginTop="10px";
     addnew.innerHTML='<input type="text" id="fpnew" placeholder="Add a new player to roster" autocapitalize="words" style="flex:1"><button class="iconbtn" id="fpnewb">+</button>';
     entry.appendChild(addnew);
-    addnew.querySelector("#fpnewb").onclick=function(){var v=addnew.querySelector("#fpnew").value.trim();if(!v)return;addToRoster(v);saveDB();render();};
-    addnew.querySelector("#fpnew").onkeydown=function(e){if(e.key==="Enter"){var v=e.target.value.trim();if(v){addToRoster(v);saveDB();render();}}};
+    addnew.querySelector("#fpnewb").onclick=function(){var v=addnew.querySelector("#fpnew").value.trim();if(!v)return;fpAddPlayer(v);};
+    addnew.querySelector("#fpnew").onkeydown=function(e){if(e.key==="Enter"){var v=e.target.value.trim();if(v){fpAddPlayer(v);}}};
 
     var save=document.createElement("button");save.className="btn primary";save.textContent="Save game";
     save.onclick=function(){
