@@ -212,7 +212,7 @@
 <div class="wrap">
   <header>
     <div class="dot" aria-hidden="true"></div>
-    <div style="flex:1"><h1>Pickleball T.M. <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">3.3</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
+    <div style="flex:1"><h1>Pickleball T.M. <span style="font-size:11px;font-weight:500;color:var(--dim);vertical-align:middle">3.4</span></h1><p class="sub" id="tracksub">Doubles · partner rotation</p></div>
   </header>
   <p class="trackslabel">Tracks</p>
   <div id="trackbar"></div>
@@ -942,7 +942,7 @@
 
     var cr=document.createElement("div");cr.className="card";cr.style.marginTop="10px";
     cr.innerHTML='<p style="font-size:11.5px;line-height:1.5;color:var(--dim);margin:0">'+
-      '\u00A9 2026 Mark Endres. All rights reserved. Pickleball T.M. Round Robin \u2014 version 3.3.<br>'+
+      '\u00A9 2026 Mark Endres. All rights reserved. Pickleball T.M. Round Robin \u2014 version 3.4.<br>'+
       'For personal use only. Not to be copied, redistributed, or used commercially without permission.</p>';
     host.appendChild(cr);
   }
@@ -1580,18 +1580,22 @@
     entry.querySelector("#gd").onclick=function(){fp.type="doubles";fp.t1=[fp.t1[0]||null,null];fp.t2=[fp.t2[0]||null,null];render();};
     entry.querySelector("#gs").onclick=function(){fp.type="singles";render();};
 
-    // v3.3: recently-added players (this rec session) float to the top of the pickers
-    if(!s._fpRecent)s._fpRecent=[];
-    var recent=s._fpRecent.filter(function(id){return DB.roster.some(function(r){return r.id===id;});});
+    // v3.4: players who just played float to the top of the pickers, most-recent game first.
+    // Recency comes from play order: freeGames is newest-last, so walk it backward and
+    // collect player ids in the order they most recently appeared. Players who haven't
+    // played this session fall to the bottom, alphabetical among themselves.
     var rosterAlpha=DB.roster.slice().sort(function(a,b){return a.name.localeCompare(b.name);});
+    var playedGames=freeGames(s).filter(function(g){return g&&g.t1&&g.t2;});
+    var recencyIds=[];
+    for(var gi=playedGames.length-1;gi>=0;gi--){
+      var g=playedGames[gi];
+      (g.t1.concat(g.t2)).forEach(function(id){if(id&&recencyIds.indexOf(id)<0)recencyIds.push(id);});
+    }
     var opts=[];
-    recent.forEach(function(id){var r=rosterAlpha.filter(function(x){return x.id===id;})[0];if(r)opts.push(r);});
-    rosterAlpha.forEach(function(r){if(recent.indexOf(r.id)<0)opts.push(r);});
+    recencyIds.forEach(function(id){var r=rosterAlpha.filter(function(x){return x.id===id;})[0];if(r)opts.push(r);});
+    rosterAlpha.forEach(function(r){if(recencyIds.indexOf(r.id)<0)opts.push(r);});
     function fpAddPlayer(name){
-      var id=addToRoster(name);
-      if(id){
-        s._fpRecent=[id].concat((s._fpRecent||[]).filter(function(x){return x!==id;}));
-      }
+      addToRoster(name);
       saveDB();render();
     }
     function select(teamArr,slot){
